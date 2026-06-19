@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Руслан Маер | Репортажный фотограф в Москве</title>
+    <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+    
+    <!-- Шрифты -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Infant:wght@400;500;600&family=Cormorant+Unicase:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- Фиксированная панель сверху -->
+<nav class="top-bar">
+    <div class="contacts-row">
+        <!-- Левая часть: Иконки соцсетей -->
+        <div class="social-icons">
+            <a href="https://t.me/maer_photo" target="_blank" rel="noopener noreferrer" class="contact-icon icon-tg">
+                <img src="img/contacts/tg_icon.svg" alt="Telegram">
+            </a>
+            <a href="https://max.ru" target="_blank" rel="noopener noreferrer" class="contact-icon icon-max">
+                <img src="img/contacts/max_icon.svg" alt="MAX">
+            </a>
+        </div>
+
+        <!-- Правая часть: Телефон и Почта (в одной колонке) -->
+        <div class="contact-column">
+            <a href="tel:+79936886822" class="phone-link">+7 (993) 688-68-22</a>
+        </div>
+    </div>
+</nav>
+
+    <!-- Шапка -->
+    <header>
+        <div class="header-split">
+            <div class="header-image-col">
+                <img src="img/me.webp" alt="Руслан Маер">
+            </div>
+            <div class="header-text-col">
+                <h1>Руслан Маер</h1>
+                <p class="subtitle">Репортажный фотограф</p>
+                <p class="bio">
+                    12 лет в фотографии. 
+                    Специализируюсь на живых событиях, 
+                    где важно передать настоящие эмоции и запечатлеть моменты, 
+                    к которым захочется возвращаться.
+                </p>
+                <!-- Кнопка перенесена сюда -->
+                <a href="#" class="price-link" id="openPrice">СТОИМОСТЬ</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Галерея -->
+    <main>
+        <section class="gallery" id="gallery"></section>
+    </main>
+
+    <!-- Лайтбокс для фото -->
+    <div class="lightbox" id="lightbox">
+        <span class="lightbox-close">&times;</span>
+        <img class="lightbox-img" id="lightbox-img" src="" alt="">
+    </div>
+
+    <!-- Модальное окно прайс-листа -->
+    <div class="price-modal" id="priceModal">
+        <div class="price-modal-content">
+            <span class="price-modal-close">&times;</span>
+            <h2>Стоимость услуг фотографа</h2>
+            <div class="price-list">
+                <div class="price-item">
+                    <span class="price-name">Репортажная съёмка</span>
+                    <span class="price-value">от 2 000 ₽/час</span>
+                </div>
+                <div class="price-item">
+                    <span class="price-name">Интерьерная съёмка</span>
+                    <span class="price-value">от 4 000 ₽/объект</span>
+                </div>
+                <div class="price-item">
+                    <span class="price-name">Глубокая ретушь</span>
+                    <span class="price-value">от 400 ₽/фото</span>
+                </div>
+            </div>
+            <p class="price-note">* Итоговая стоимость обсуждается индивидуально после уточнения всех деталей.</p>
+        </div>
+    </div>
+
+<!-- Блок с организационной информацией -->
+<section class="info-section">
+    <div class="info-container">
+        <div class="info-grid">
+            <div class="info-item">
+                <h3>Сроки</h3>
+                <p>Обработанные фотографии в облаке <br>через 7-14 дней.</p>
+            </div>
+            <div class="info-item">
+                <h3>Оплата</h3>
+                <p>Возможность наличной и безналичной оплаты.</p>
+            </div>
+            <div class="info-item">
+                <h3>Договор</h3>
+                <p>Заключение договора с физическими и юридическими лицами.</p>
+            </div>
+            <div class="info-item">
+                <h3>---</h3>
+                <p>Скидки для постоянных клиентов.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+    <!-- Футер -->
+<footer>
+    <img src="img/sign.png" alt="Подпись" class="footer-sign">
+    <div class="footer-right">
+<div class="footer-email-wrap">
+    <img src="img/contacts/email_icon.svg" alt="Email" class="footer-email-icon">
+    <a href="mailto:maer-photo@ya.ru" class="footer-email">maer-photo@ya.ru</a>
+</div>
+        <p class="footer-copyright">© 2026 Руслан Маер. Все права защищены.</p>
+        <p class="footer-copyright">Информация на сайте не является публичной офертой.</p>
+    </div>
+</footer>
+
+    <script src="script.js" defer></script>
+</body>
+</html>
