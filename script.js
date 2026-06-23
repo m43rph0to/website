@@ -56,49 +56,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 function runAnimation() {
-    // 0. Скрываем лоадер перед перемешиванием и анимацией
-    const loader = document.getElementById('gallery-loader');
-    if (loader) loader.classList.add('hidden');
-
-    // 1. Получаем все элементы фото
     const photoElements = Array.from(gallery.querySelectorAll('.photo'));
+    if (photoElements.length === 0) return;
 
-    // 2. Перемешиваем массив элементов (алгоритм Фишера-Йетса)
-    // Это гарантирует случайный порядок расположения в сетке
+    // Перемешиваем
     for (let i = photoElements.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [photoElements[i], photoElements[j]] = [photoElements[j], photoElements[i]];
     }
 
-    // 3. Очищаем галерею и вставляем элементы в новом порядке
-    // Это заставляет браузер перестроить Masonry-сетку хаотично
     gallery.innerHTML = '';
     photoElements.forEach(photo => gallery.appendChild(photo));
 
-    // 4. Запускаем анимацию с небольшой задержкой
-    // Задержка нужна, чтобы браузер успел пересчитать координаты новой сетки
+    // 1. Скрываем лоадер
+    const loader = document.getElementById('gallery-loader');
+    if (loader) loader.classList.add('hidden');
+
+    // 2. Ждем пока лоадер полностью исчезнет (450мс = 0.4s transition + буфер)
     setTimeout(() => {
         const finalElements = Array.from(gallery.querySelectorAll('.photo'));
-        
-        // Собираем текущие координаты каждого элемента
         const photoData = finalElements.map(el => {
             const rect = el.getBoundingClientRect();
             return { el, top: rect.top, left: rect.left };
         });
 
-        // Сортируем по диагонали (эффект веера): сумма координат Y + X
-        // Чем меньше сумма, тем ближе элемент к левому верхнему углу
         photoData.sort((a, b) => (a.top + a.left) - (b.top + b.left));
 
-        // Поочередно показываем фото
         photoData.forEach((item, index) => {
             setTimeout(() => {
                 item.el.classList.add('visible');
-            }, index * 60); // 60ms - скорость появления
+            }, index * 60);
         });
-    }, 150);
+    }, 450);
 }
-
     loadNextPhoto();
 
     // --- Лайтбокс ---
