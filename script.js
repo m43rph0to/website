@@ -56,6 +56,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 function runAnimation() {
+    // 0. Скрываем лоадер перед перемешиванием и анимацией
+    const loader = document.getElementById('gallery-loader');
+    if (loader) loader.classList.add('hidden');
+
     // 1. Получаем все элементы фото
     const photoElements = Array.from(gallery.querySelectorAll('.photo'));
 
