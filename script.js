@@ -1,46 +1,89 @@
 document.addEventListener('DOMContentLoaded', () => {
     const gallery = document.getElementById('gallery');
+    const loader = document.getElementById('gallery-loader');
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightbox-img');
     const closeBtn = document.querySelector('.lightbox-close');
+    const navButtons = document.querySelectorAll('.nav-btn');
 
-    // === НАСТРОЙКИ АВТО-ЗАГРУЗКИ ===
-    const config = {
-        folder: 'img/gallery/',
-        extension: '.webp',
-        start: 10,
-        step: 10,
-        maxAttempts: 200,
-        maxErrorsInRow: 5
+    // === GENRES NAVIGATION ===
+    const genreConfig = {
+        'img/gallery/reportage/': {
+            altPool: [
+                "Репортажная съемка мероприятия в Москве",
+                "Съемка живых событий",
+                "Живые эмоции и спонтанные моменты",
+                "Атмосфера мероприятия в деталях",
+                "Спонтанные моменты в кадре",
+                "Репортажный кадр с мероприятия",
+                "Ключевые моменты события в кадре",
+                "Динамика и энергия мероприятия"
+            ]
+        },
+        'img/gallery/portrait/': {
+            altPool: [
+                "none",
+                "none"
+            ]
+        },
+        'img/gallery/interior/': {
+            altPool: [
+                "none",
+                "none"
+            ]
+            
+        },
+        'img/gallery/wedding/': {
+            altPool: [
+                "none",
+                "none"
+            ]
+        },
+        'img/gallery/studio/': {
+            altPool: [
+                "none",
+                "none"
+            ]
+        }
     };
 
-    let currentNumber = config.start;
+    let currentFolder = 'img/gallery/reportage/';
+    let currentNumber = 10;
     let errorsCount = 0;
+    const MAX_ERRORS = 5;
+
+    // Получение случайного описания из пула текущего жанра
+    function getAltText() {
+        const config = genreConfig[currentFolder];
+        if (!config || !config.altPool.length) return "Фотография из портфолио";
+        return config.altPool[Math.floor(Math.random() * config.altPool.length)];
+    }
+
+    function createPhotoBlock(src) {
+        const div = document.createElement('div');
+        div.className = 'photo';
+        div.innerHTML = `<img src="${src}" alt="${getAltText()}" loading="lazy">`;
+        gallery.appendChild(div);
+    }
 
     function loadNextPhoto() {
-        if (currentNumber > config.maxAttempts) {
-            runAnimation();
-            return;
-        }
-
         const fileName = String(currentNumber).padStart(3, '0');
-        const fullPath = `${config.folder}${fileName}${config.extension}`;
+        const fullPath = `${currentFolder}${fileName}.webp`;
         const img = new Image();
 
         img.onload = () => {
             errorsCount = 0;
-            createPhotoBlock(fullPath, `Фото ${fileName}`);
-            currentNumber += config.step;
+            createPhotoBlock(fullPath);
+            currentNumber += 10;
             loadNextPhoto();
         };
 
         img.onerror = () => {
             errorsCount++;
-            currentNumber += config.step;
-            if (errorsCount >= config.maxErrorsInRow) {
-                console.log('Галерея загружена.');
+            if (errorsCount >= MAX_ERRORS) {
                 runAnimation();
             } else {
+                currentNumber += 10;
                 loadNextPhoto();
             }
         };
@@ -48,50 +91,66 @@ document.addEventListener('DOMContentLoaded', () => {
         img.src = fullPath;
     }
 
-    function createPhotoBlock(src, alt) {
-        const div = document.createElement('div');
-        div.className = 'photo';
-        div.innerHTML = `<img src="${src}" alt="${alt}" loading="lazy">`;
-        gallery.appendChild(div);
+    function runAnimation() {
+        const photos = Array.from(gallery.querySelectorAll('.photo'));
+        if (photos.length === 0) return;
+
+        // Перемешивание (Фишер-Йетс)
+        for (let i = photos.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [photos[i], photos[j]] = [photos[j], photos[i]];
+        }
+        gallery.innerHTML = '';
+        photos.forEach(p => gallery.appendChild(p));
+
+        // Скрытие лоадер
+        if (loader) loader.classList.add('hidden');
+
+        // Загрузка фото после скрытия лоадера
+        setTimeout(() => {
+            const finalPhotos = Array.from(gallery.querySelectorAll('.photo'));
+            const photoData = finalPhotos.map(el => {
+                const rect = el.getBoundingClientRect();
+                return { el, pos: rect.top + rect.left };
+            });
+            photoData.sort((a, b) => a.pos - b.pos);
+
+            photoData.forEach((item, index) => {
+                setTimeout(() => item.el.classList.add('visible'), index * 50);
+            });
+        }, 400);
     }
 
-function runAnimation() {
-    const photoElements = Array.from(gallery.querySelectorAll('.photo'));
-    if (photoElements.length === 0) return;
+    // === ПЕРЕКЛЮЧЕНИЕ ЖАНРА ===
+    function switchGenre(folderPath) {
+        if (folderPath === currentFolder) return;
+        
+        currentFolder = folderPath;
+        currentNumber = 10;
+        errorsCount = 0;
+        
+        gallery.innerHTML = '';
+        if (loader) loader.classList.remove('hidden');
 
-    // Перемешиваем
-    for (let i = photoElements.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [photoElements[i], photoElements[j]] = [photoElements[j], photoElements[i]];
+        // Обновление активной кнопки
+        navButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.folder === folderPath);
+        });
+
+        loadNextPhoto();
     }
 
-    gallery.innerHTML = '';
-    photoElements.forEach(photo => gallery.appendChild(photo));
-
-    // 1. Скрываем лоадер
-    const loader = document.getElementById('gallery-loader');
-    if (loader) loader.classList.add('hidden');
-
-    // 2. Ждем пока лоадер полностью исчезнет (450мс = 0.4s transition + буфер)
-    setTimeout(() => {
-        const finalElements = Array.from(gallery.querySelectorAll('.photo'));
-        const photoData = finalElements.map(el => {
-            const rect = el.getBoundingClientRect();
-            return { el, top: rect.top, left: rect.left };
+    // Обработчики кликов по кнопкам
+    navButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            switchGenre(btn.dataset.folder);
         });
+    });
 
-        photoData.sort((a, b) => (a.top + a.left) - (b.top + b.left));
-
-        photoData.forEach((item, index) => {
-            setTimeout(() => {
-                item.el.classList.add('visible');
-            }, index * 60);
-        });
-    }, 450);
-}
+    // Запуск дефолтной галереи (Репортаж)
     loadNextPhoto();
 
-    // --- Лайтбокс ---
+    // === ЛАЙТБОКС ===
     gallery.addEventListener('click', (e) => {
         const img = e.target.closest('.photo img');
         if (!img) return;
@@ -107,12 +166,14 @@ function runAnimation() {
     };
 
     closeBtn?.addEventListener('click', closeLightbox);
-    lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });
+    lightbox.addEventListener('click', (e) => {
+        if (e.target === lightbox) closeLightbox();
+    });
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && lightbox.classList.contains('active')) closeLightbox();
     });
 
-    // --- Модальное окно прайс-листа ---
+    // === ЦЕНЫ ===
     const priceModal = document.getElementById('priceModal');
     const openPriceBtn = document.getElementById('openPrice');
     const closePriceBtn = document.querySelector('.price-modal-close');
@@ -144,4 +205,11 @@ function runAnimation() {
             document.body.style.overflow = '';
         }
     });
+        // Кнопка Наверх
+    const backToTopBtn = document.getElementById('backToTop');
+    if (backToTopBtn) {
+        backToTopBtn.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
 });

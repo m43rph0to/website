@@ -36,7 +36,7 @@
             </a>
         </div>
 
-        <!-- Правая часть: Телефон и Почта (в одной колонке) -->
+        <!-- Правая часть: Телефон -->
         <div class="contact-column">
             <a href="tel:+79936886822" class="phone-link">+7 (993) 688-68-22</a>
         </div>
@@ -58,7 +58,6 @@
                     где важно передать настоящие эмоции и запечатлеть моменты, 
                     к которым захочется возвращаться.
                 </p>
-                <!-- Кнопка перенесена сюда -->
                 <a href="#" class="price-link" id="openPrice">СТОИМОСТЬ</a>
             </div>
         </div>
@@ -66,15 +65,21 @@
 
     <!-- Галерея -->
 <main>
+    <!-- Навигация по жанрам -->
+    <nav class="gallery-nav" id="galleryNav">
+        <button class="nav-btn active" data-folder="img/gallery/reportage/">Репортаж</button>
+        <button class="nav-btn hidden" data-folder="img/gallery/portrait/">Портреты</button>
+        <button class="nav-btn" data-folder="img/gallery/interior/">Интерьеры</button>
+        <button class="nav-btn hidden" data-folder="img/gallery/wedding/">Свадьбы</button>
+        <button class="nav-btn hidden" data-folder="img/gallery/studio/">Студия</button>
+    </nav>
     <div class="gallery-wrapper">
-        <!-- Блок загрузки -->
         <div id="gallery-loader" class="gallery-loader">
             <div class="loader-spinner"></div>
-            <span class="loader-text">ЗАГРУЗКА ГАЛЕРЕИ</span>
+            <span class="loader-text">Загрузка галереи</span>
         </div>
-        
-        <!-- Сама сетка галереи -->
         <section class="gallery" id="gallery"></section>
+        <button id="backToTop" class="back-to-top">Вернуться наверх ↑</button>
     </div>
 </main>
 
@@ -103,7 +108,7 @@
                     <span class="price-value">от 400 ₽/фото</span>
                 </div>
             </div>
-            <p class="price-note">* Итоговая стоимость обсуждается индивидуально после уточнения всех деталей.</p>
+            <p class="price-note">Итоговая стоимость может отличаться после уточнения всех деталей заказа.</p>
         </div>
     </div>
 
