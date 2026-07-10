@@ -91,35 +91,32 @@ document.addEventListener('DOMContentLoaded', () => {
         img.src = fullPath;
     }
 
-    function runAnimation() {
-        const photos = Array.from(gallery.querySelectorAll('.photo'));
-        if (photos.length === 0) return;
+function runAnimation() {
+    const photos = Array.from(gallery.querySelectorAll('.photo'));
+    if (photos.length === 0) return;
 
-        // Перемешивание (Фишер-Йетс)
-        for (let i = photos.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [photos[i], photos[j]] = [photos[j], photos[i]];
-        }
-        gallery.innerHTML = '';
-        photos.forEach(p => gallery.appendChild(p));
+    // Перемешивание удалено. Фотографии остаются в порядке загрузки (010, 020, 030...)
 
-        // Скрытие лоадер
-        if (loader) loader.classList.add('hidden');
+    gallery.innerHTML = '';
+    photos.forEach(p => gallery.appendChild(p));
 
-        // Загрузка фото после скрытия лоадера
-        setTimeout(() => {
-            const finalPhotos = Array.from(gallery.querySelectorAll('.photo'));
-            const photoData = finalPhotos.map(el => {
-                const rect = el.getBoundingClientRect();
-                return { el, pos: rect.top + rect.left };
-            });
-            photoData.sort((a, b) => a.pos - b.pos);
+    // Скрытие лоадер
+    if (loader) loader.classList.add('hidden');
 
-            photoData.forEach((item, index) => {
-                setTimeout(() => item.el.classList.add('visible'), index * 50);
-            });
-        }, 400);
-    }
+    // Загрузка фото после скрытия лоадера
+    setTimeout(() => {
+        const finalPhotos = Array.from(gallery.querySelectorAll('.photo'));
+        const photoData = finalPhotos.map(el => {
+            const rect = el.getBoundingClientRect();
+            return { el, pos: rect.top + rect.left };
+        });
+        photoData.sort((a, b) => a.pos - b.pos);
+
+        photoData.forEach((item, index) => {
+            setTimeout(() => item.el.classList.add('visible'), index * 50);
+        });
+    }, 400);
+}
 
     // === ПЕРЕКЛЮЧЕНИЕ ЖАНРА ===
     function switchGenre(folderPath) {
