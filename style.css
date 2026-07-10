@@ -186,24 +186,32 @@ body {
 
 /* === PRICE BUTTON === */
 .price-link {
-    position: absolute;
-    bottom: 20px;
-    right: 30px;
+    grid-column: 2;
+    justify-self: start;
+    width: fit-content;
+    margin-top: 10px; 
+    
+    font-family: var(--font-heading);
     font-size: 1.6rem;
     font-weight: 500;
-    opacity: 0.7;
+    opacity: 0.75; 
     transition: var(--transition);
-    white-space: nowrap;
     cursor: pointer;
     text-decoration: none;
     background: linear-gradient(15deg, #ffad15, #ff7300);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    text-shadow: none;
+
+    border: 1px solid #ffad15;
+    border-radius: 8px;
+    padding: 2px 12px;
 }
+
 .price-link:hover {
     opacity: 1;
+    border-color: #ff7300;
+    transform: scale(1.01);
 }
 
 /* === PRICE MODAL === */
@@ -670,8 +678,10 @@ footer {
         position: relative;
         bottom: auto;
         right: auto;
+        grid-column: 1;
+        justify-self: end;
         align-self: flex-end;
-        margin-top: 20px;
+        margin-top: 4px;
         font-size: 1.4rem;
     }
 
