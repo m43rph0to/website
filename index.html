@@ -43,22 +43,15 @@
     </div>
 </nav>
 
-    <!-- Шапка -->
+    <!-- Заголовок сайта -->
     <header>
-        <div class="header-split">
-            <div class="header-image-col">
-                <img src="img/me.webp" alt="Руслан Маер">
-            </div>
-            <div class="header-text-col">
-                <h1>Руслан Маер</h1>
-                <p class="subtitle">Репортажный фотограф</p>
-                <p class="bio">
-                    Снимаю живые события, 
-                    где важно передать настоящие эмоции и запечатлеть моменты, 
-                    к которым захочется возвращаться. 
-                    <br>Более десяти лет занимаюсь фотоискусством.
-                </p>
-            </div>
+        <div class="header-title">
+            <h1>
+                <button type="button" class="about-title-trigger" data-open-about aria-label="Открыть информацию о фотографе">
+                    Руслан Маер
+                </button>
+            </h1>
+            <p class="subtitle">репортажный фотограф</p>
         </div>
     </header>
 
@@ -91,7 +84,6 @@
     <!-- Модальное окно прайс-листа -->
     <div class="price-modal" id="priceModal">
         <div class="price-modal-content">
-            <span class="price-modal-close">&times;</span>
             <h2>Стоимость услуг фотографа</h2>
             <div class="price-list">
                 <div class="price-item">
@@ -108,6 +100,26 @@
                 </div>
             </div>
             <p class="price-note">Итоговая стоимость может отличаться после уточнения всех деталей заказа.</p>
+        </div>
+    </div>
+
+    <!-- Модальное окно «Обо мне» -->
+    <div class="price-modal about-modal" id="aboutModal">
+        <div class="price-modal-content about-modal-content">
+            <div class="about-modal-layout">
+                <div class="about-modal-photo">
+                    <img src="img/me.webp" alt="Руслан Маер">
+                </div>
+                <div class="about-copy">
+                    <p class="about-kicker">Руслан Маер</p>
+                    <p class="about-description">
+                        Снимаю живые события, где важно передать настоящие эмоции, и запечатлеваю моменты, к которым захочется возвращаться.
+                    </p>
+                    <div class="about-details">
+                        <span>Репортажи · Интерьеры</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -131,14 +143,18 @@
                 <h3>Скидки</h3>
                 <p>Приятные бонусы для постоянных клиентов.</p>
             </div>
-            <a href="#" class="price-link" id="openPrice">СТОИМОСТЬ УСЛУГ</a>
+            <a href="#" class="price-link" id="openPrice">СТОИМОСТЬ</a>
         </div>
     </div>
 </section>
 
     <!-- Футер -->
 <footer>
-    <img src="img/sign.png" alt="Подпись" class="footer-sign">
+    <div class="footer-left">
+        <button type="button" class="footer-sign-button" data-open-about aria-label="Открыть информацию о фотографе">
+            <img src="img/sign.png" alt="" class="footer-sign">
+        </button>
+    </div>
     <div class="footer-right">
 <div class="footer-email-wrap">
     <img src="img/contacts/email_icon.svg" alt="Email" class="footer-email-icon">

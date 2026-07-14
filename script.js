@@ -48,93 +48,257 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     let currentFolder = 'img/gallery/reportage/';
-    let currentNumber = 10;
-    let errorsCount = 0;
+    let loadSession = 0;
+    let resizeTimer;
+    let nextRevealAt = 0;
     const MAX_ERRORS = 5;
+    const DISCOVERY_BATCH_SIZE = 10;
+    const FIRST_PHOTO_CANDIDATES = [10, 20, 30];
+    const REVEAL_STEP = 90;
 
     // Получение случайного описания из пула текущего жанра
-    function getAltText() {
-        const config = genreConfig[currentFolder];
+    function getAltText(folderPath) {
+        const config = genreConfig[folderPath];
         if (!config || !config.altPool.length) return "Фотография из портфолио";
         return config.altPool[Math.floor(Math.random() * config.altPool.length)];
     }
 
-    function createPhotoBlock(src) {
+    // Перемешивание без изменения исходного массива
+    function shuffle(items) {
+        const result = [...items];
+        for (let i = result.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [result[i], result[j]] = [result[j], result[i]];
+        }
+        return result;
+    }
+
+    function getColumnCount() {
+        if (window.innerWidth <= 600) return 1;
+        if (window.innerWidth <= 800) return 2;
+        return 3;
+    }
+
+    // Раскладка по условным рядам: слева направо, затем следующий ряд
+    function layoutPhotos() {
+        const photos = Array.from(gallery.querySelectorAll('.photo'));
+        if (photos.length === 0) {
+            gallery.style.height = '';
+            return;
+        }
+
+        const styles = getComputedStyle(gallery);
+        const rootStyles = getComputedStyle(document.documentElement);
+        const paddingLeft = parseFloat(styles.paddingLeft) || 0;
+        const paddingRight = parseFloat(styles.paddingRight) || 0;
+        const paddingTop = parseFloat(styles.paddingTop) || 0;
+        const paddingBottom = parseFloat(styles.paddingBottom) || 0;
+        const gap = parseFloat(rootStyles.getPropertyValue('--gap')) || 10;
+        const columnCount = getColumnCount();
+        const contentWidth = gallery.clientWidth - paddingLeft - paddingRight;
+        const columnWidth = (contentWidth - gap * (columnCount - 1)) / columnCount;
+        const columnHeights = Array(columnCount).fill(paddingTop);
+
+        photos.forEach((photo, index) => {
+            const image = photo.querySelector('img');
+            if (!image || !image.naturalWidth || !image.naturalHeight) return;
+
+            const columnIndex = index % columnCount;
+            const photoHeight = columnWidth * image.naturalHeight / image.naturalWidth;
+            const x = paddingLeft + columnIndex * (columnWidth + gap);
+            const y = columnHeights[columnIndex];
+
+            photo.style.width = `${columnWidth}px`;
+            photo.style.height = `${photoHeight}px`;
+            photo.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+            photo.dataset.column = columnIndex;
+            columnHeights[columnIndex] += photoHeight + gap;
+        });
+
+        const contentHeight = Math.max(...columnHeights) - gap + paddingBottom;
+        gallery.style.height = `${Math.max(0, contentHeight)}px`;
+    }
+
+    function createPhotoBlock(src, image, folderPath) {
         const div = document.createElement('div');
         div.className = 'photo';
-        div.innerHTML = `<img src="${src}" alt="${getAltText()}" loading="lazy">`;
+        image.alt = getAltText(folderPath);
+        image.decoding = 'async';
+        image.dataset.src = src;
+        div.appendChild(image);
         gallery.appendChild(div);
+
+        layoutPhotos();
+
+        const now = Date.now();
+        const revealAt = Math.max(now, nextRevealAt);
+        const revealDelay = revealAt - now;
+        nextRevealAt = revealAt + REVEAL_STEP;
+
+        setTimeout(() => {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => div.classList.add('visible'));
+            });
+        }, revealDelay);
+
+        if (loader) loader.classList.add('hidden');
     }
 
-    function loadNextPhoto() {
-        const fileName = String(currentNumber).padStart(3, '0');
-        const fullPath = `${currentFolder}${fileName}.webp`;
-        const img = new Image();
+    function loadImage(src) {
+        return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = () => resolve(image);
+            image.onerror = () => reject(new Error(`Не удалось загрузить ${src}`));
+            image.src = src;
+        });
+    }
 
-        img.onload = () => {
-            errorsCount = 0;
-            createPhotoBlock(fullPath);
-            currentNumber += 10;
-            loadNextPhoto();
-        };
-
-        img.onerror = () => {
-            errorsCount++;
-            if (errorsCount >= MAX_ERRORS) {
-                runAnimation();
-            } else {
-                currentNumber += 10;
-                loadNextPhoto();
+    // Проверка существования файла без загрузки всего изображения
+    async function fileExists(src) {
+        try {
+            const response = await fetch(src, { method: 'HEAD', cache: 'no-store' });
+            if (response.status !== 405 && response.status !== 501) {
+                return response.ok;
             }
-        };
+        } catch (error) {
+            return false;
+        }
 
-        img.src = fullPath;
+        try {
+            const response = await fetch(src, {
+                method: 'GET',
+                headers: { Range: 'bytes=0-0' },
+                cache: 'no-store'
+            });
+            if (response.body) await response.body.cancel();
+            return response.ok;
+        } catch (error) {
+            return false;
+        }
     }
 
-function runAnimation() {
-    const photos = Array.from(gallery.querySelectorAll('.photo'));
-    if (photos.length === 0) return;
+    // Поиск файлов 010.webp, 020.webp и далее небольшими параллельными пачками
+    async function discoverPhotoPaths(folderPath, sessionId) {
+        const paths = [];
+        let nextNumber = 10;
+        let errorsCount = 0;
 
-    // Перемешивание удалено. Фотографии остаются в порядке загрузки (010, 020, 030...)
+        while (errorsCount < MAX_ERRORS && sessionId === loadSession) {
+            const candidates = Array.from({ length: DISCOVERY_BATCH_SIZE }, (_, index) => {
+                const number = nextNumber + index * 10;
+                const fileName = String(number).padStart(3, '0');
+                return `${folderPath}${fileName}.webp`;
+            });
 
-    gallery.innerHTML = '';
-    photos.forEach(p => gallery.appendChild(p));
+            const results = await Promise.all(candidates.map(async src => ({
+                src,
+                exists: await fileExists(src)
+            })));
 
-    // Скрытие лоадер
-    if (loader) loader.classList.add('hidden');
+            for (const result of results) {
+                if (sessionId !== loadSession) return [];
 
-    // Загрузка фото после скрытия лоадера
-    setTimeout(() => {
-        const finalPhotos = Array.from(gallery.querySelectorAll('.photo'));
-        const photoData = finalPhotos.map(el => {
-            const rect = el.getBoundingClientRect();
-            return { el, pos: rect.top + rect.left };
+                if (result.exists) {
+                    paths.push(result.src);
+                    errorsCount = 0;
+                } else {
+                    errorsCount++;
+                }
+
+                if (errorsCount >= MAX_ERRORS) break;
+            }
+
+            nextNumber += DISCOVERY_BATCH_SIZE * 10;
+        }
+
+        return paths;
+    }
+
+    // Первый кадр выбирается из начала папки и загружается одновременно с поиском остальных
+    async function loadFirstPhoto(folderPath, sessionId) {
+        const candidates = shuffle(FIRST_PHOTO_CANDIDATES).map(number => {
+            const fileName = String(number).padStart(3, '0');
+            return `${folderPath}${fileName}.webp`;
         });
-        photoData.sort((a, b) => a.pos - b.pos);
 
-        photoData.forEach((item, index) => {
-            setTimeout(() => item.el.classList.add('visible'), index * 50);
-        });
-    }, 400);
-}
+        for (const src of candidates) {
+            if (sessionId !== loadSession) return null;
+
+            try {
+                const image = await loadImage(src);
+                if (sessionId !== loadSession) return null;
+                return { src, image };
+            } catch (error) {
+                // Пробуем следующий файл из стартовой тройки
+            }
+        }
+
+        return null;
+    }
+
+    async function loadGallery(folderPath) {
+        const sessionId = ++loadSession;
+        nextRevealAt = 0;
+        gallery.innerHTML = '';
+        gallery.style.height = '';
+        if (loader) loader.classList.remove('hidden');
+
+        const discoveryPromise = discoverPhotoPaths(folderPath, sessionId);
+        let firstPhoto = await loadFirstPhoto(folderPath, sessionId);
+
+        if (sessionId !== loadSession) return;
+
+        if (firstPhoto) {
+            createPhotoBlock(firstPhoto.src, firstPhoto.image, folderPath);
+        }
+
+        let photoPaths = await discoveryPromise;
+        if (sessionId !== loadSession) return;
+
+        if (!firstPhoto && photoPaths.length > 0) {
+            photoPaths = shuffle(photoPaths);
+            const firstPath = photoPaths.shift();
+
+            try {
+                const image = await loadImage(firstPath);
+                if (sessionId !== loadSession) return;
+                firstPhoto = { src: firstPath, image };
+                createPhotoBlock(firstPath, image, folderPath);
+            } catch (error) {
+                // Остальные файлы всё равно продолжают загружаться
+            }
+        }
+
+        const remainingPaths = shuffle(photoPaths.filter(src => src !== firstPhoto?.src));
+
+        for (const src of remainingPaths) {
+            if (sessionId !== loadSession) return;
+
+            try {
+                const image = await loadImage(src);
+                if (sessionId !== loadSession) return;
+                createPhotoBlock(src, image, folderPath);
+            } catch (error) {
+                // Один повреждённый файл не должен останавливать всю галерею
+            }
+        }
+
+        // Если папка пока пустая, оставляем индикатор на экране.
+        // Он скроется автоматически после появления первой фотографии.
+    }
 
     // === ПЕРЕКЛЮЧЕНИЕ ЖАНРА ===
     function switchGenre(folderPath) {
         if (folderPath === currentFolder) return;
         
         currentFolder = folderPath;
-        currentNumber = 10;
-        errorsCount = 0;
-        
-        gallery.innerHTML = '';
-        if (loader) loader.classList.remove('hidden');
 
         // Обновление активной кнопки
         navButtons.forEach(btn => {
             btn.classList.toggle('active', btn.dataset.folder === folderPath);
         });
 
-        loadNextPhoto();
+        loadGallery(folderPath);
     }
 
     // Обработчики кликов по кнопкам
@@ -145,7 +309,12 @@ function runAnimation() {
     });
 
     // Запуск дефолтной галереи (Репортаж)
-    loadNextPhoto();
+    loadGallery(currentFolder);
+
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(layoutPhotos, 120);
+    });
 
     // === ЛАЙТБОКС ===
     gallery.addEventListener('click', (e) => {
@@ -173,19 +342,12 @@ function runAnimation() {
     // === ЦЕНЫ ===
     const priceModal = document.getElementById('priceModal');
     const openPriceBtn = document.getElementById('openPrice');
-    const closePriceBtn = document.querySelector('.price-modal-close');
 
     if (openPriceBtn && priceModal) {
         openPriceBtn.addEventListener('click', (e) => {
             e.preventDefault();
             priceModal.classList.add('active');
             document.body.style.overflow = 'hidden';
-        });
-    }
-    if (closePriceBtn && priceModal) {
-        closePriceBtn.addEventListener('click', () => {
-            priceModal.classList.remove('active');
-            document.body.style.overflow = '';
         });
     }
     if (priceModal) {
@@ -202,6 +364,34 @@ function runAnimation() {
             document.body.style.overflow = '';
         }
     });
+
+    // === ОБО МНЕ ===
+    const aboutModal = document.getElementById('aboutModal');
+    const openAboutButtons = document.querySelectorAll('[data-open-about]');
+
+    const closeAboutModal = () => {
+        if (!aboutModal) return;
+        aboutModal.classList.remove('active');
+        document.body.style.overflow = '';
+    };
+
+    if (aboutModal) {
+        openAboutButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                aboutModal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+        });
+    }
+    aboutModal?.addEventListener('click', (e) => {
+        if (e.target === aboutModal) closeAboutModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && aboutModal?.classList.contains('active')) {
+            closeAboutModal();
+        }
+    });
+
         // Кнопка Наверх
     const backToTopBtn = document.getElementById('backToTop');
     if (backToTopBtn) {
