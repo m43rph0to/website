@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return 3;
     }
 
-    // Раскладка по условным рядам: слева направо, затем следующий ряд
+    // Верхний ряд заполняется слева направо, остальные кадры идут в самый короткий столбец.
     function layoutPhotos() {
         const photos = Array.from(gallery.querySelectorAll('.photo'));
         if (photos.length === 0) {
@@ -103,7 +103,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const image = photo.querySelector('img');
             if (!image || !image.naturalWidth || !image.naturalHeight) return;
 
-            const columnIndex = index % columnCount;
+            const columnIndex = index < columnCount
+                ? index
+                : columnHeights.indexOf(Math.min(...columnHeights));
             const photoHeight = columnWidth * image.naturalHeight / image.naturalWidth;
             const x = paddingLeft + columnIndex * (columnWidth + gap);
             const y = columnHeights[columnIndex];
@@ -270,6 +272,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const remainingPaths = shuffle(photoPaths.filter(src => src !== firstPhoto?.src));
+
+        // Недостающие фотографии верхнего ряда загружаем одновременно.
+        // Каждая появляется сразу после своей загрузки, не ожидая соседние кадры.
+        const visiblePhotoCount = gallery.querySelectorAll('.photo').length;
+        const firstRowSlots = Math.max(0, getColumnCount() - visiblePhotoCount);
+        const firstRowPaths = remainingPaths.splice(0, firstRowSlots);
+
+        await Promise.all(firstRowPaths.map(async src => {
+            try {
+                const image = await loadImage(src);
+                if (sessionId !== loadSession) return;
+                createPhotoBlock(src, image, folderPath);
+            } catch (error) {
+                // Если один кадр не загрузился, его место займёт следующий исправный файл.
+            }
+        }));
+
+        if (sessionId !== loadSession) return;
 
         for (const src of remainingPaths) {
             if (sessionId !== loadSession) return;
