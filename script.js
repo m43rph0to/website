@@ -3,7 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const loader = document.getElementById('gallery-loader');
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightbox-img');
-    const closeBtn = document.querySelector('.lightbox-close');
+    const lightboxBuffer = document.getElementById('lightbox-img-buffer');
+    const lightboxPrev = document.getElementById('lightboxPrev');
+    const lightboxNext = document.getElementById('lightboxNext');
     const navButtons = document.querySelectorAll('.nav-btn');
 
     // === GENRES NAVIGATION ===
@@ -51,6 +53,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let loadSession = 0;
     let resizeTimer;
     let nextRevealAt = 0;
+    let lightboxOrder = [];
+    let currentLightboxIndex = -1;
+    let swipeStartX = null;
+    let swipeStartY = null;
+    let lightboxTransitioning = false;
+    let lightboxAnimationToken = 0;
+    let lightboxHistoryActive = false;
+    let ignoreNextLightboxPopstate = false;
+    const loadedLightboxSources = new Set();
+    const lightboxAltBySource = new Map();
     const MAX_ERRORS = 5;
     const DISCOVERY_BATCH_SIZE = 10;
     const FIRST_PHOTO_CANDIDATES = [10, 20, 30];
@@ -127,8 +139,12 @@ document.addEventListener('DOMContentLoaded', () => {
         image.alt = getAltText(folderPath);
         image.decoding = 'async';
         image.dataset.src = src;
+        loadedLightboxSources.add(src);
+        lightboxAltBySource.set(src, image.alt);
         div.appendChild(image);
         gallery.appendChild(div);
+
+        updateLightboxControls();
 
         layoutPhotos();
 
@@ -241,6 +257,11 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadGallery(folderPath) {
         const sessionId = ++loadSession;
         nextRevealAt = 0;
+        lightboxOrder = [];
+        currentLightboxIndex = -1;
+        loadedLightboxSources.clear();
+        lightboxAltBySource.clear();
+        updateLightboxControls();
         gallery.innerHTML = '';
         gallery.style.height = '';
         if (loader) loader.classList.remove('hidden');
@@ -251,6 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sessionId !== loadSession) return;
 
         if (firstPhoto) {
+            lightboxOrder = [firstPhoto.src];
             createPhotoBlock(firstPhoto.src, firstPhoto.image, folderPath);
         }
 
@@ -265,6 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const image = await loadImage(firstPath);
                 if (sessionId !== loadSession) return;
                 firstPhoto = { src: firstPath, image };
+                lightboxOrder = [firstPath];
                 createPhotoBlock(firstPath, image, folderPath);
             } catch (error) {
                 // Остальные файлы всё равно продолжают загружаться
@@ -272,6 +295,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const remainingPaths = shuffle(photoPaths.filter(src => src !== firstPhoto?.src));
+        lightboxOrder = firstPhoto
+            ? [firstPhoto.src, ...remainingPaths]
+            : [...remainingPaths];
+        updateLightboxControls();
 
         // Недостающие фотографии верхнего ряда загружаем одновременно.
         // Каждая появляется сразу после своей загрузки, не ожидая соседние кадры.
@@ -333,55 +360,322 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(layoutPhotos, 120);
+        resizeTimer = setTimeout(() => {
+            layoutPhotos();
+        }, 120);
     });
 
     // === ЛАЙТБОКС ===
+    function updateLightboxControls() {
+        const availablePhotos = lightboxOrder.reduce((count, src) => (
+            count + (loadedLightboxSources.has(src) ? 1 : 0)
+        ), 0);
+        const disabled = availablePhotos < 2;
+
+        [lightboxPrev, lightboxNext].forEach((button) => {
+            if (!button) return;
+            button.disabled = disabled;
+            button.classList.toggle('is-disabled', disabled);
+        });
+    }
+
+    function addLightboxHistoryEntry() {
+        if (lightboxHistoryActive) return;
+
+        try {
+            history.pushState(
+                { ...(history.state || {}), lightboxOpen: true },
+                '',
+                window.location.href
+            );
+            lightboxHistoryActive = true;
+        } catch (error) {
+            // Лайтбокс продолжит работать и там, где History API недоступен.
+        }
+    }
+
+    function setLightboxPhoto(index) {
+        if (!lightboxOrder.length) return;
+
+        const normalizedIndex = (index + lightboxOrder.length) % lightboxOrder.length;
+        const src = lightboxOrder[normalizedIndex];
+        if (!loadedLightboxSources.has(src)) return;
+
+        const wasOpen = lightbox.classList.contains('active');
+        currentLightboxIndex = normalizedIndex;
+        lightboxImg.src = src;
+        lightboxImg.alt = lightboxAltBySource.get(src) || 'Фотография из портфолио';
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        if (!wasOpen) addLightboxHistoryEntry();
+    }
+
+    function preloadLightboxPhoto(src) {
+        return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.decoding = 'async';
+            image.onload = () => resolve();
+            image.onerror = () => reject(new Error(`Не удалось подготовить ${src}`));
+            image.src = src;
+
+            if (image.complete && image.naturalWidth) resolve();
+        });
+    }
+
+    async function animateLightboxPhoto(index, entryVector) {
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const canAnimate = (
+            typeof lightboxImg.animate === 'function' &&
+            typeof lightboxBuffer?.animate === 'function'
+        );
+
+        if (reducedMotion || !canAnimate || currentLightboxIndex < 0) {
+            setLightboxPhoto(index);
+            return;
+        }
+
+        lightboxTransitioning = true;
+        const animationToken = ++lightboxAnimationToken;
+        const distance = window.innerWidth <= 600 ? 18 : 14;
+        const outX = -entryVector.x * distance;
+        const outY = -entryVector.y * distance;
+        const inX = entryVector.x * distance;
+        const inY = entryVector.y * distance;
+        const centered = 'translate(-50%, -50%)';
+        let outgoing;
+        let incoming;
+
+        try {
+            const normalizedIndex = (index + lightboxOrder.length) % lightboxOrder.length;
+            const src = lightboxOrder[normalizedIndex];
+            const alt = lightboxAltBySource.get(src) || 'Фотография из портфолио';
+
+            await preloadLightboxPhoto(src);
+            if (animationToken !== lightboxAnimationToken || !lightbox.classList.contains('active')) return;
+
+            lightboxBuffer.src = src;
+            lightboxBuffer.alt = alt;
+            if (typeof lightboxBuffer.decode === 'function') {
+                await lightboxBuffer.decode().catch(() => {});
+            }
+            if (animationToken !== lightboxAnimationToken || !lightbox.classList.contains('active')) return;
+
+            outgoing = lightboxImg.animate([
+                { transform: `${centered} translate3d(0, 0, 0)`, opacity: 1 },
+                { transform: `${centered} translate3d(${outX}px, ${outY}px, 0)`, opacity: 0 }
+            ], {
+                duration: 220,
+                easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+                fill: 'both'
+            });
+            incoming = lightboxBuffer.animate([
+                { transform: `${centered} translate3d(${inX}px, ${inY}px, 0)`, opacity: 0 },
+                { transform: `${centered} translate3d(0, 0, 0)`, opacity: 1 }
+            ], {
+                duration: 220,
+                easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+                fill: 'both'
+            });
+
+            await Promise.all([outgoing.finished, incoming.finished]);
+            if (animationToken !== lightboxAnimationToken || !lightbox.classList.contains('active')) return;
+
+            currentLightboxIndex = normalizedIndex;
+            lightboxImg.src = src;
+            lightboxImg.alt = alt;
+            if (typeof lightboxImg.decode === 'function') {
+                await lightboxImg.decode().catch(() => {});
+            }
+
+            outgoing.cancel();
+            incoming.cancel();
+            lightboxBuffer.removeAttribute('src');
+            lightboxBuffer.alt = '';
+        } catch (error) {
+            if (animationToken === lightboxAnimationToken && lightbox.classList.contains('active')) {
+                setLightboxPhoto(index);
+            }
+        } finally {
+            outgoing?.cancel();
+            incoming?.cancel();
+            lightboxBuffer?.getAnimations().forEach(animation => animation.cancel());
+            if (lightboxBuffer) {
+                lightboxBuffer.removeAttribute('src');
+                lightboxBuffer.alt = '';
+            }
+            lightboxTransitioning = false;
+        }
+    }
+
+    function showLightboxPhoto(index) {
+        if (lightboxTransitioning) return;
+        setLightboxPhoto(index);
+    }
+
+    function navigateLightbox(direction, entryVector = { x: direction, y: 0 }) {
+        if (lightboxTransitioning || currentLightboxIndex < 0 || lightboxOrder.length < 2) return;
+
+        for (let offset = 1; offset <= lightboxOrder.length; offset++) {
+            const candidateIndex = (
+                currentLightboxIndex + direction * offset + lightboxOrder.length
+            ) % lightboxOrder.length;
+            const candidateSrc = lightboxOrder[candidateIndex];
+
+            if (loadedLightboxSources.has(candidateSrc)) {
+                animateLightboxPhoto(candidateIndex, entryVector);
+                return;
+            }
+        }
+    }
+
+    function closeLightbox({ fromHistory = false } = {}) {
+        lightboxAnimationToken++;
+        lightboxImg.getAnimations?.().forEach(animation => animation.cancel());
+        lightboxBuffer?.getAnimations?.().forEach(animation => animation.cancel());
+        lightboxTransitioning = false;
+        lightbox.classList.remove('active');
+        document.body.style.overflow = '';
+        currentLightboxIndex = -1;
+
+        if (lightboxHistoryActive) {
+            lightboxHistoryActive = false;
+            if (!fromHistory) {
+                ignoreNextLightboxPopstate = true;
+                history.back();
+            }
+        }
+
+        setTimeout(() => {
+            if (!lightbox.classList.contains('active')) {
+                lightboxImg.src = '';
+                lightboxImg.alt = '';
+                if (lightboxBuffer) {
+                    lightboxBuffer.removeAttribute('src');
+                    lightboxBuffer.alt = '';
+                }
+            }
+        }, 300);
+    }
+
     gallery.addEventListener('click', (e) => {
         const img = e.target.closest('.photo img');
         if (!img) return;
-        lightboxImg.src = img.src;
-        lightbox.classList.add('active');
-        document.body.style.overflow = 'hidden';
+        const src = img.dataset.src;
+        const index = lightboxOrder.indexOf(src);
+        if (index !== -1) showLightboxPhoto(index);
     });
 
-    const closeLightbox = () => {
-        lightbox.classList.remove('active');
-        document.body.style.overflow = '';
-        setTimeout(() => { lightboxImg.src = ''; }, 300);
-    };
+    lightboxPrev?.addEventListener('click', () => navigateLightbox(-1));
+    lightboxNext?.addEventListener('click', () => navigateLightbox(1));
 
-    closeBtn?.addEventListener('click', closeLightbox);
     lightbox.addEventListener('click', (e) => {
-        if (e.target === lightbox) closeLightbox();
+        if (e.target.closest('.lightbox-img, .lightbox-nav')) return;
+        closeLightbox();
     });
+
+    window.addEventListener('popstate', () => {
+        if (ignoreNextLightboxPopstate) {
+            ignoreNextLightboxPopstate = false;
+            return;
+        }
+
+        if (lightbox.classList.contains('active')) {
+            closeLightbox({ fromHistory: true });
+        }
+    });
+
+    lightbox.addEventListener('touchstart', (e) => {
+        if (!lightbox.classList.contains('active') || e.touches.length !== 1) {
+            swipeStartX = null;
+            swipeStartY = null;
+            return;
+        }
+
+        swipeStartX = e.touches[0].clientX;
+        swipeStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    lightbox.addEventListener('touchend', (e) => {
+        if (swipeStartX === null || swipeStartY === null || !e.changedTouches.length) return;
+
+        const deltaX = e.changedTouches[0].clientX - swipeStartX;
+        const deltaY = e.changedTouches[0].clientY - swipeStartY;
+        const swipeThreshold = Math.max(50, window.innerWidth * 0.08);
+
+        swipeStartX = null;
+        swipeStartY = null;
+
+        const horizontalSwipe = Math.abs(deltaX) >= swipeThreshold && Math.abs(deltaX) >= Math.abs(deltaY);
+        const verticalSwipe = Math.abs(deltaY) >= swipeThreshold && Math.abs(deltaY) > Math.abs(deltaX);
+
+        if (horizontalSwipe) {
+            const direction = deltaX < 0 ? 1 : -1;
+            navigateLightbox(direction, { x: direction, y: 0 });
+        } else if (verticalSwipe) {
+            const direction = deltaY < 0 ? 1 : -1;
+            navigateLightbox(direction, { x: 0, y: direction });
+        }
+    }, { passive: true });
+
+    lightbox.addEventListener('touchcancel', () => {
+        swipeStartX = null;
+        swipeStartY = null;
+    }, { passive: true });
+
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && lightbox.classList.contains('active')) closeLightbox();
+        if (!lightbox.classList.contains('active')) return;
+
+        if (e.key === 'Escape') {
+            closeLightbox();
+        } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            navigateLightbox(-1);
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            navigateLightbox(1);
+        }
     });
 
     // === ЦЕНЫ ===
     const priceModal = document.getElementById('priceModal');
     const openPriceBtn = document.getElementById('openPrice');
+    const priceContactToggle = document.getElementById('priceContactToggle');
+    const priceContactOptions = document.getElementById('priceContactOptions');
+
+    function setPriceContactOpen(open) {
+        if (!priceContactToggle || !priceContactOptions) return;
+        priceContactToggle.setAttribute('aria-expanded', String(open));
+        priceContactOptions.setAttribute('aria-hidden', String(!open));
+        priceContactOptions.classList.toggle('active', open);
+    }
+
+    function closePriceModal() {
+        if (!priceModal) return;
+        priceModal.classList.remove('active');
+        document.body.style.overflow = '';
+        setPriceContactOpen(false);
+    }
 
     if (openPriceBtn && priceModal) {
         openPriceBtn.addEventListener('click', (e) => {
             e.preventDefault();
+            setPriceContactOpen(false);
             priceModal.classList.add('active');
             document.body.style.overflow = 'hidden';
         });
     }
+    priceContactToggle?.addEventListener('click', () => {
+        const isOpen = priceContactToggle.getAttribute('aria-expanded') === 'true';
+        setPriceContactOpen(!isOpen);
+    });
     if (priceModal) {
         priceModal.addEventListener('click', (e) => {
-            if (e.target === priceModal) {
-                priceModal.classList.remove('active');
-                document.body.style.overflow = '';
-            }
+            if (e.target === priceModal) closePriceModal();
         });
     }
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && priceModal && priceModal.classList.contains('active')) {
-            priceModal.classList.remove('active');
-            document.body.style.overflow = '';
+            closePriceModal();
         }
     });
 

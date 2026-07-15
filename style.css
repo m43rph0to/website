@@ -15,7 +15,14 @@
     padding: 0; 
     box-sizing: border-box; 
 }
+html {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
 body {
+    width: 100%;
+    max-width: 100%;
     background: var(--bg);
     color: var(--text);
     font-family: var(--font-text);
@@ -48,6 +55,7 @@ body {
     justify-content: space-between;
     align-items: center;
     width: 100%;
+    min-width: 0;
 }
 .social-icons { 
     display: flex; 
@@ -239,16 +247,11 @@ body {
     padding: 40px;
     border-radius: 8px;
     max-width: 600px;
+    max-height: 90vh;
     width: 100%;
     position: relative;
+    overflow-y: auto;
     box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-}
-.price-modal h2 {
-    font-family: var(--font-heading); 
-    font-size: 2rem; 
-    font-weight: 500;
-    margin-bottom: 25px; 
-    text-align: center;
 }
 .price-list { 
     display: flex; 
@@ -282,6 +285,114 @@ body {
     font-size: 1rem;
     text-align: center; 
     font-style: italic;
+}
+.price-contact {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid #2d2d2d;
+    text-align: center;
+    display: grid;
+    place-items: center;
+    min-height: 38px;
+}
+.price-contact > * {
+    grid-area: 1 / 1;
+}
+.price-contact-toggle {
+    appearance: none;
+    padding: 3px 2px;
+    border: 0;
+    background: linear-gradient(15deg, #ffad15, #ff7300);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: #aaa;
+    font-family: var(--font-text);
+    font-size: 1.3rem;
+    line-height: 1.1;
+    cursor: pointer;
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+    transition: color 0.3s ease, opacity 0.2s ease, transform 0.25s ease, visibility 0s linear 0s;
+}
+.price-contact-toggle:hover,
+.price-contact-toggle:focus-visible {
+    color: transparent;
+}
+.price-contact-toggle[aria-expanded="true"] {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: scale(0.94);
+    transition-delay: 0s, 0s, 0s, 0s, 0.2s;
+}
+.price-contact-toggle:focus-visible {
+    outline: 1px solid #777;
+    outline-offset: 5px;
+}
+.price-contact-options {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 24px;
+    margin: 0;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: scale(0.94);
+    transition: opacity 0.25s ease, transform 0.3s ease, visibility 0s linear 0.25s;
+}
+.price-contact-options.active {
+    margin: 0;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: scale(1);
+    transition-delay: 0.08s, 0.08s, 0s;
+}
+.price-contact-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+}
+/* Индивидуальные размеры иконок в окне стоимости — версия для ПК. */
+.price-contact-icon[title="Telegram"] {
+    width: 30px;
+    height: 30px;
+}
+.price-contact-icon[title="MAX"] {
+    width: 25.5px;
+    height: 25.5px;
+}
+.price-contact-icon[title="Позвонить"] {
+    width: 30px;
+    height: 30px;
+}
+.price-contact-icon[title="Почта"] {
+    width: 30px;
+    height: 30px;
+}
+.price-contact-icon img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    opacity: 0.52;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+    transition: opacity 0.3s ease, transform 0.3s ease, filter 0.3s ease;
+}
+.price-contact-icon:hover img,
+.price-contact-icon:focus-visible img {
+    opacity: 1;
+    transform: scale(1.1);
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.8));
+}
+.price-contact-icon:focus-visible {
+    outline: 1px solid #777;
+    outline-offset: 5px;
+    border-radius: 2px;
 }
 
 /* === SITE TITLE === */
@@ -382,11 +493,11 @@ header {
     font-size: 1.65rem;
     font-weight: 400;
     line-height: 1.1;
-    letter-spacing: -0.3px;
+    letter-spacing: 0.3px;
     color: #fff;
 }
 .about-description {
-    margin: 12px 0 0;
+    margin: 14px 0 0;
     color: #ddd;
     font-family: var(--font-text);
     font-size: 1.28rem;
@@ -408,7 +519,7 @@ header {
     border-top: 1px solid rgba(255, 255, 255, 0.16);
     color: #999;
     font-family: var(--font-text);
-    font-size: 0.92rem;
+    font-size: 1.1rem;
     letter-spacing: 0.025em;
 }
 /* === GALLERY (JS MASONRY) === */
@@ -459,7 +570,7 @@ header {
     z-index: 9999;
     justify-content: center; 
     align-items: center; 
-    padding: 20px;
+    padding: 0;
     opacity: 0; 
     transition: opacity 0.3s ease;
 }
@@ -467,29 +578,98 @@ header {
     display: flex; 
     opacity: 1; 
 }
+.lightbox-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.lightbox-image-frame {
+    position: relative;
+    width: 90vw;
+    height: 90vh;
+    height: 90dvh;
+}
 .lightbox-img {
-    max-width: 90%; 
-    max-height: 90vh;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 1;
+    max-width: 100%; 
+    max-height: 100%;
     width: auto; 
     height: auto; 
     object-fit: contain;
+    transform: translate(-50%, -50%);
     border-radius: 4px; 
     box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+    user-select: none;
+    -webkit-user-drag: none;
+    touch-action: none;
 }
-.lightbox-close {
-    position: absolute; 
-    top: 20px; 
-    right: 30px;
-    font-size: 3rem; 
-    color: #fff; 
-    cursor: pointer;
-    user-select: none; 
-    transition: transform 0.2s; 
-    z-index: 10000; 
+.lightbox-img-buffer {
+    z-index: 2;
+    opacity: 0;
+    pointer-events: none;
+}
+.lightbox-controls {
+    display: contents;
+}
+.lightbox-nav {
+    position: fixed;
+    top: 50%;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 62px;
+    height: 100px;
+    padding: 0 0 8px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.62);
+    font-family: Georgia, serif;
+    font-size: 3.8rem;
+    font-weight: 400;
     line-height: 1;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: none;
+    outline: none;
+    transition: color 0.25s ease, transform 0.25s ease, opacity 0.25s ease, text-shadow 0.25s ease;
 }
-.lightbox-close:hover { 
-    transform: scale(1.1); 
+.lightbox-prev {
+    left: max(50px, 2.5vw);
+    transform: translate(-50%, -50%);
+}
+.lightbox-next {
+    right: max(50px, 2.5vw);
+    transform: translate(50%, -50%);
+}
+.lightbox-nav:hover,
+.lightbox-nav:focus-visible {
+    color: #fff;
+    background: transparent;
+    border: 0;
+    text-shadow: 0 0 12px rgba(255, 255, 255, 0.32);
+}
+.lightbox-prev:hover,
+.lightbox-prev:focus-visible {
+    transform: translate(-50%, -50%) scale(1.06);
+}
+.lightbox-next:hover,
+.lightbox-next:focus-visible {
+    transform: translate(50%, -50%) scale(1.06);
+}
+.lightbox-nav:focus-visible {
+    outline: none;
+}
+.lightbox-nav.is-disabled,
+.lightbox-nav:disabled {
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* === FOOTER === */
@@ -755,10 +935,58 @@ footer {
 @media (max-width: 600px) {
     .footer-sign { display: none; }
     .top-bar { padding-top: 10px; padding-bottom: 10px; }
-    .contacts-row { gap: 10px; }
+    .contacts-row { gap: 10px; min-width: 0; }
     .social-icons { gap: 10px; }
-    .lightbox-close { top: 10px; right: 15px; font-size: 2.5rem; }
+    .social-icons,
+    .contact-column {
+        flex: 0 1 auto;
+        min-width: 0;
+    }
+    .phone-link {
+        display: block;
+        font-size: clamp(1rem, 5.2vw, 1.25rem);
+        line-height: 1.2;
+    }
+    .lightbox {
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        padding: 0;
+    }
+    .lightbox-content {
+        width: 100%;
+        height: 100%;
+        padding: 10px;
+        box-sizing: border-box;
+        align-items: center;
+        justify-content: center;
+    }
+    .lightbox-image-frame {
+        width: 100%;
+        max-width: calc(100vw - 20px);
+        height: 100%;
+        max-height: calc(100vh - 20px);
+        max-height: calc(100dvh - 20px);
+        margin: 0 auto;
+    }
+    .lightbox-img {
+        max-width: 100%;
+        max-height: 100%;
+    }
+    .lightbox-controls {
+        display: none;
+    }
     .top-bar, header, .gallery, footer { padding-left: 16px; padding-right: 16px; }
+    main,
+    .gallery-wrapper,
+    .gallery,
+    .gallery-nav,
+    .header-title {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
 
     .info-container {
         padding-left: 25px;
@@ -776,24 +1004,19 @@ footer {
         font-size: 1.4rem;
     }
 
-    /* === GALLERY NAVIGATION HORIZONTAL SCROLL === */
+    /* Две видимые вкладки умещаются без скрытого горизонтального сдвига. */
     .gallery-nav {
-        overflow-x: auto;
+        overflow-x: hidden;
         justify-content: center;
-        gap: 12px;
-        padding: 0 16px 15px;
+        gap: clamp(8px, 3vw, 12px);
+        padding: 0 0 15px;
         margin: 0;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-    }
-    .gallery-nav::-webkit-scrollbar {
-        display: none;
     }
     .nav-btn {
         flex-shrink: 0;
         white-space: nowrap;
         font-size: 1.4rem;
-        padding: 0 14px;
+        padding: 0 clamp(8px, 3vw, 14px);
     }
 
     footer { 
@@ -810,7 +1033,7 @@ footer {
     }
 
     .header-title h1 { 
-        font-size: 2.4rem; 
+        font-size: clamp(2rem, 9.6vw, 2.4rem); 
         letter-spacing: 1px;
     }
     
@@ -842,8 +1065,54 @@ footer {
     }
 
     .price-modal-content { padding: 25px 20px; }
-    .price-modal h2 { font-size: 1.4rem; }
-    .price-item { flex-direction: column; align-items: flex-start; gap: 5px; }
-    .price-value { margin-left: 0; }
+    #priceModal .price-list {
+        width: 100%;
+    }
+    #priceModal .price-item {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 14px;
+    }
+    #priceModal .price-name {
+        min-width: 0;
+        text-align: left;
+    }
+    #priceModal .price-value {
+        flex: 0 0 auto;
+        margin-left: auto;
+        text-align: right;
+    }
+    .price-contact {
+        margin-top: 18px;
+        padding-top: 15px;
+    }
+    .price-contact-toggle {
+        font-size: 1.2rem;
+    }
+    .price-contact-options {
+        gap: 22px;
+    }
+    .price-contact-icon {
+        width: 27px;
+        height: 27px;
+    }
+    /* Индивидуальные размеры иконок в окне стоимости — мобильная версия. */
+    .price-contact-icon[title="Telegram"] {
+        width: 27px;
+        height: 27px;
+    }
+    .price-contact-icon[title="MAX"] {
+        width: 23px;
+        height: 23px;
+    }
+    .price-contact-icon[title="Позвонить"] {
+        width: 27px;
+        height: 27px;
+    }
+    .price-contact-icon[title="Почта"] {
+        width: 27px;
+        height: 27px;
+    }
     .info-grid { grid-template-columns: 1fr; }
 }

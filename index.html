@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="style.css">
 
     <title>Руслан Маер | Фотограф в Москве</title>
+    <link rel="canonical" href="https://xn----7sbp0analsq.xn--p1ai/">
     <meta name="author" content="Руслан Маер">
     <meta name="description" content="Репортажная и интерьерная съёмка с выездом по МСК и области. Работа по договору с физическими и юридическими лицами.">
     <meta property="og:title" content="Руслан Маер | Фотограф в Москве">
@@ -18,6 +19,29 @@
     <meta property="og:url" content="https://xn----7sbp0analsq.xn--p1ai/">
     <meta property="og:type" content="website">
     <meta property="og:locale" content="ru_RU">
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "@id": "https://xn----7sbp0analsq.xn--p1ai/#ruslan-maer",
+        "name": "Руслан Маер",
+        "url": "https://xn----7sbp0analsq.xn--p1ai/",
+        "image": "https://xn----7sbp0analsq.xn--p1ai/img/me.webp",
+        "jobTitle": "Фотограф",
+        "description": "Репортажная и интерьерная съёмка в Москве и Московской области.",
+        "telephone": "+7-993-688-68-22",
+        "email": "maer-photo@ya.ru",
+        "sameAs": [
+            "https://t.me/maer_photo",
+            "https://max.ru/u/f9LHodD0cOICE9kGu8rwIxK8JnYMzGdVFX_HNnYYqD_Hj1ZlJfLt55EHc7k"
+        ],
+        "knowsAbout": [
+            "Репортажная фотография",
+            "Интерьерная фотография"
+        ]
+    }
+    </script>
 
     <!-- Шрифты -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -80,29 +104,55 @@
 
     <!-- Лайтбокс для фото -->
     <div class="lightbox" id="lightbox">
-        <span class="lightbox-close">&times;</span>
-        <img class="lightbox-img" id="lightbox-img" src="" alt="">
+        <div class="lightbox-content">
+            <div class="lightbox-image-frame">
+                <img class="lightbox-img lightbox-img-current" id="lightbox-img" src="" alt="">
+                <img class="lightbox-img lightbox-img-buffer" id="lightbox-img-buffer" src="" alt="" aria-hidden="true">
+            </div>
+            <div class="lightbox-controls">
+                <button type="button" class="lightbox-nav lightbox-prev" id="lightboxPrev" aria-label="Предыдущая фотография">&#8249;</button>
+                <button type="button" class="lightbox-nav lightbox-next" id="lightboxNext" aria-label="Следующая фотография">&#8250;</button>
+            </div>
+        </div>
     </div>
 
     <!-- Модальное окно прайс-листа -->
     <div class="price-modal" id="priceModal">
         <div class="price-modal-content">
-            <h2>Стоимость услуг фотографа</h2>
             <div class="price-list">
                 <div class="price-item">
                     <span class="price-name">Репортажная съёмка</span>
-                    <span class="price-value">от 2 000 ₽/час</span>
+                    <span class="price-value">от 2 000 ₽</span>
                 </div>
                 <div class="price-item">
                     <span class="price-name">Интерьерная съёмка</span>
-                    <span class="price-value">от 4 000 ₽/объект</span>
+                    <span class="price-value">от 4 000 ₽</span>
                 </div>
                 <div class="price-item">
                     <span class="price-name">Глубокая ретушь</span>
-                    <span class="price-value">от 400 ₽/фото</span>
+                    <span class="price-value">от 400 ₽</span>
                 </div>
             </div>
             <p class="price-note">Итоговая стоимость может отличаться после уточнения всех деталей заказа.</p>
+            <div class="price-contact">
+                <button type="button" class="price-contact-toggle" id="priceContactToggle" aria-expanded="false" aria-controls="priceContactOptions">
+                    ЗАКАЗАТЬ СЪЁМКУ
+                </button>
+                <div class="price-contact-options" id="priceContactOptions" aria-hidden="true">
+                    <a href="https://t.me/maer_photo" target="_blank" rel="noopener noreferrer" class="price-contact-icon" aria-label="Написать в Telegram" title="Telegram">
+                        <img src="img/contacts/tg_icon.svg" alt="">
+                    </a>
+                    <a href="https://max.ru/u/f9LHodD0cOICE9kGu8rwIxK8JnYMzGdVFX_HNnYYqD_Hj1ZlJfLt55EHc7k" target="_blank" rel="noopener noreferrer" class="price-contact-icon" aria-label="Написать в MAX" title="MAX">
+                        <img src="img/contacts/max_icon.svg" alt="">
+                    </a>
+                    <a href="tel:+79936886822" class="price-contact-icon" aria-label="Позвонить" title="Позвонить">
+                        <img src="img/contacts/call-icon.svg" alt="">
+                    </a>
+                    <a href="mailto:maer-photo@ya.ru" class="price-contact-icon" aria-label="Написать на почту" title="Почта">
+                        <img src="img/contacts/mail-icon.svg" alt="">
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
