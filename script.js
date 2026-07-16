@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const currentYear = document.getElementById('currentYear');
+    if (currentYear) currentYear.textContent = new Date().getFullYear();
+
     const gallery = document.getElementById('gallery');
     const loader = document.getElementById('gallery-loader');
     const lightbox = document.getElementById('lightbox');

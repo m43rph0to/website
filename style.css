@@ -1,12 +1,32 @@
 :root {
     --bg: #121212;
-    --text: #e0e0e0;
+    --text-primary: #e0e0e0;
+    --text-secondary: #b5b5b2;
+    --text-muted: #999996;
+    --text: var(--text-primary);
     --accent: #888;
+    --contact-icon-opacity: 0.5;
+    --contact-icon-hover-opacity: 0.9;
     --gap: 10px;
     --transition: 0.3s ease;
     --font-text: 'Cormorant', system-ui, sans-serif;
     --font-heading: 'Cormorant Unicase', system-ui, sans-serif;
     --font-other: 'Cormorant Infant', system-ui, sans-serif;
+}
+
+/* Типизированные цвета позволяют плавно анимировать сам градиент текста.
+   В обычном состоянии оба его края одинаковые, поэтому цвет остаётся ровным
+   и вокруг букв не появляется жёлтая кайма. */
+@property --interactive-text-start {
+    syntax: '<color>';
+    inherits: false;
+    initial-value: #e0e0e0;
+}
+
+@property --interactive-text-end {
+    syntax: '<color>';
+    inherits: false;
+    initial-value: #e0e0e0;
 }
 
 /* === RESET & BASE === */
@@ -68,12 +88,12 @@ body {
 .contact-icon img {
     width: 100%; height: 100%;
     object-fit: contain;
-    opacity: 0.45;
+    opacity: var(--contact-icon-opacity);
     transition: var(--transition);
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
 }
 .contact-icon:hover img { 
-    opacity: 1; 
+    opacity: var(--contact-icon-hover-opacity); 
     transform: scale(1.1); 
 }
 
@@ -105,7 +125,7 @@ body {
     transform: scale(1);
 }
 .contact-icon.icon-tg:hover::after { 
-    opacity: 1; 
+    opacity: var(--contact-icon-hover-opacity); 
     transform: scale(1.1); 
 }
 
@@ -137,7 +157,7 @@ body {
     transform: scale(1);
 }
 .contact-icon.icon-max:hover::after { 
-    opacity: 1; 
+    opacity: var(--contact-icon-hover-opacity); 
     transform: scale(1.1); 
 }
 
@@ -169,7 +189,7 @@ body {
     transform: scale(1);
 }
 .contact-icon.icon-email:hover::after { 
-    opacity: 1; 
+    opacity: var(--contact-icon-hover-opacity); 
     transform: scale(1.1); 
 }
 /* === PHONE LINK === */
@@ -225,6 +245,15 @@ body {
 @media (min-width: 601px) {
     .price-link {
         margin-left: 48px;
+    }
+
+    /* В окне стоимости на ПК названия услуг и цены увеличены ровно на 2 px. */
+    #priceModal .price-name {
+        font-size: calc(1.3rem + 2px);
+    }
+
+    #priceModal .price-value {
+        font-size: calc(1.2rem + 2px);
     }
 }
 
@@ -302,6 +331,9 @@ body {
     color: var(--text); 
     font-size: 1.3rem; 
 }
+#priceModal .price-name {
+    color: #c7c7c7;
+}
 .price-value {
     color: var(--accent);
     font-weight: 500;
@@ -329,6 +361,9 @@ body {
     grid-area: 1 / 1;
 }
 .price-contact-toggle {
+    --button-text-base: #fff;
+    --interactive-text-start: var(--button-text-base);
+    --interactive-text-end: var(--button-text-base);
     appearance: none;
     display: inline-flex;
     align-items: center;
@@ -336,10 +371,15 @@ body {
     height: 30px;
     padding: 0 2px;
     border: 0;
-    background: linear-gradient(15deg, #ffad15, #ff7300);
+    background: linear-gradient(
+        15deg,
+        var(--interactive-text-start),
+        var(--interactive-text-end)
+    );
     -webkit-background-clip: text;
     background-clip: text;
-    color: #fff;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
     font-family: var(--font-text);
     font-size: 1.55rem;
     line-height: 30px;
@@ -347,11 +387,21 @@ body {
     opacity: 1;
     visibility: visible;
     transform: scale(1);
-    transition: color 0.3s ease, opacity 0.2s ease, transform 0.25s ease, visibility 0s linear 0s;
+    transition:
+        --interactive-text-start 0.3s ease,
+        --interactive-text-end 0.3s ease,
+        opacity 0.2s ease,
+        transform 0.25s ease,
+        visibility 0s linear 0s;
 }
 .price-contact-toggle:hover,
 .price-contact-toggle:focus-visible {
-    color: transparent;
+    --interactive-text-start: #ffad15;
+    --interactive-text-end: #ff7300;
+}
+#priceModal .price-contact-toggle {
+    --button-text-base: #c7c7c7;
+    font-weight: 500;
 }
 .price-contact-toggle[aria-expanded="true"] {
     opacity: 0;
@@ -409,15 +459,24 @@ body {
     width: 100%;
     height: 100%;
     object-fit: contain;
-    opacity: 0.52;
+    opacity: var(--contact-icon-opacity);
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
     transition: opacity 0.3s ease, transform 0.3s ease, filter 0.3s ease;
 }
 .price-contact-icon:hover img,
 .price-contact-icon:focus-visible img {
-    opacity: 1;
+    opacity: var(--contact-icon-hover-opacity);
     transform: scale(1.1);
     filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.8));
+}
+#priceModal .price-contact-icon img {
+    opacity: 1;
+    filter: brightness(0) invert(72%) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+#priceModal .price-contact-icon:hover img,
+#priceModal .price-contact-icon:focus-visible img {
+    opacity: 1;
+    filter: brightness(0) invert(90%) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.8));
 }
 .price-contact-icon:focus-visible {
     outline: 1px solid #777;
@@ -448,21 +507,31 @@ header {
     border-bottom: 1px solid #555;
 }
 .about-title-trigger {
+    --interactive-text-start: var(--text);
+    --interactive-text-end: var(--text);
     padding: 0;
     border: 0;
-    background: linear-gradient(15deg, #ffad15, #ff7300);
+    background: linear-gradient(
+        15deg,
+        var(--interactive-text-start),
+        var(--interactive-text-end)
+    );
     -webkit-background-clip: text;
     background-clip: text;
-    color: var(--text);
+    color: transparent;
+    -webkit-text-fill-color: transparent;
     font: inherit;
     letter-spacing: inherit;
     line-height: inherit;
     cursor: pointer;
-    transition: color 0.3s ease;
+    transition:
+        --interactive-text-start 0.3s ease,
+        --interactive-text-end 0.3s ease;
 }
 .about-title-trigger:hover,
 .about-title-trigger:focus-visible {
-    color: transparent;
+    --interactive-text-start: #ffad15;
+    --interactive-text-end: #ff7300;
 }
 .about-title-trigger:focus-visible {
     outline: 1px solid var(--accent);
@@ -851,8 +920,7 @@ footer {
     font-family: var(--font-heading);
     font-size: 1.55rem;
     font-weight: 500;
-    color: var(--text);
-    opacity: 0.78;
+    color: var(--text-secondary);
     margin-bottom: 8px;
     display: inline-block; 
     border-bottom: 1px solid #555;
@@ -861,8 +929,7 @@ footer {
     font-size: 1.2rem;
     font-weight: 400;
     line-height: 1.32;
-    color: #bbb;
-    opacity: 0.78;
+    color: var(--text-muted);
     max-width: 650px;
     margin: 0;
 }
