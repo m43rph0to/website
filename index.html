@@ -65,7 +65,7 @@
 
         <!-- Правая часть: Телефон -->
         <div class="contact-column">
-            <a href="tel:+79936886822" class="phone-link">+7 (993) 688-68-22</a>
+            <a href="tel:+79936886822" class="phone-link">+7 993 688-68-22</a>
         </div>
     </div>
 </nav>
@@ -97,10 +97,48 @@
             <div class="loader-spinner"></div>
             <span class="loader-text">Загрузка галереи</span>
         </div>
+        <div id="gallery-empty" class="gallery-empty" hidden>
+            <img class="gallery-empty-photo-icon" src="img/photos-icon.svg" alt="" aria-hidden="true">
+            <p class="gallery-empty-title">
+                <span>фото скоро вернутся,</span>
+                <span>а сейчас вы можете</span>
+            </p>
+            <div class="price-contact gallery-empty-contact">
+                <button type="button" class="price-contact-toggle gallery-empty-toggle" id="galleryEmptyContactToggle" aria-expanded="false" aria-controls="galleryEmptyContactOptions">
+                    ЗАКАЗАТЬ СЪЁМКУ
+                </button>
+                <div class="price-contact-options gallery-empty-options" id="galleryEmptyContactOptions" aria-hidden="true">
+                    <a href="https://t.me/maer_photo" target="_blank" rel="noopener noreferrer" class="price-contact-icon" aria-label="Написать в Telegram" title="Telegram">
+                        <img src="img/contacts/tg_icon.svg" alt="">
+                    </a>
+                    <a href="https://max.ru/u/f9LHodD0cOICE9kGu8rwIxK8JnYMzGdVFX_HNnYYqD_Hj1ZlJfLt55EHc7k" target="_blank" rel="noopener noreferrer" class="price-contact-icon" aria-label="Написать в MAX" title="MAX">
+                        <img src="img/contacts/max_icon.svg" alt="">
+                    </a>
+                    <a href="tel:+79936886822" class="price-contact-icon" aria-label="Позвонить" title="Позвонить">
+                        <img src="img/contacts/call-icon.svg" alt="">
+                    </a>
+                    <a href="mailto:maer-photo@ya.ru" class="price-contact-icon" aria-label="Написать на почту" title="Почта">
+                        <img src="img/contacts/mail-icon.svg" alt="">
+                    </a>
+                </div>
+            </div>
+        </div>
         <section class="gallery" id="gallery"></section>
-        <button id="backToTop" class="back-to-top">↑ вернуться наверх ↑</button>
     </div>
 </main>
+
+    <!-- Плавающая кнопка возврата к началу страницы -->
+    <button
+        type="button"
+        id="backToTop"
+        class="back-to-top"
+        aria-label="Вернуться к началу страницы"
+        aria-hidden="true"
+        tabindex="-1"
+        title="Наверх"
+    >
+        <img src="img/up-icon.svg" alt="" aria-hidden="true">
+    </button>
 
     <!-- Лайтбокс для фото -->
     <div class="lightbox" id="lightbox">

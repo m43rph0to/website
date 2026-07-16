@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const lightboxPrev = document.getElementById('lightboxPrev');
     const lightboxNext = document.getElementById('lightboxNext');
     const navButtons = document.querySelectorAll('.nav-btn');
+    const galleryEmpty = document.getElementById('gallery-empty');
+    const galleryEmptyContactToggle = document.getElementById('galleryEmptyContactToggle');
+    const galleryEmptyContactOptions = document.getElementById('galleryEmptyContactOptions');
 
     // === GENRES NAVIGATION ===
     const genreConfig = {
@@ -65,7 +68,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const lightboxAltBySource = new Map();
     const MAX_ERRORS = 5;
     const DISCOVERY_BATCH_SIZE = 10;
-    const FIRST_PHOTO_CANDIDATES = [10, 20, 30];
+    const INITIAL_DISCOVERY_BATCH_SIZE = 30;
+    const FAVORITE_RANKS = [1, 2, 3];
     const REVEAL_STEP = 90;
 
     // Получение случайного описания из пула текущего жанра
@@ -124,7 +128,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             photo.style.width = `${columnWidth}px`;
             photo.style.height = `${photoHeight}px`;
-            photo.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+            photo.style.left = `${x}px`;
+            photo.style.top = `${y}px`;
             photo.dataset.column = columnIndex;
             columnHeights[columnIndex] += photoHeight + gap;
         });
@@ -165,7 +170,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadImage(src) {
         return new Promise((resolve, reject) => {
             const image = new Image();
-            image.onload = () => resolve(image);
+            image.decoding = 'async';
+            image.onload = async () => {
+                try {
+                    if (typeof image.decode === 'function') await image.decode();
+                } catch (error) {
+                    // load уже подтвердил корректность файла; старые браузеры могут отклонить decode().
+                }
+                resolve(image);
+            };
             image.onerror = () => reject(new Error(`Не удалось загрузить ${src}`));
             image.src = src;
         });
@@ -195,29 +208,55 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Поиск файлов 010.webp, 020.webp и далее небольшими параллельными пачками
+    // Суффиксы -fav1, -fav2 и -fav3 проверяются только вместо отсутствующего
+    // обычного файла. Так закрепление не добавляет запросов для всей галереи.
+    async function findFavoriteVariant(normalSrc) {
+        const stem = normalSrc.replace(/\.webp$/i, '');
+        const variants = FAVORITE_RANKS.map(rank => ({
+            src: `${stem}-fav${rank}.webp`,
+            favoriteRank: rank
+        }));
+        const results = await Promise.all(variants.map(async variant => ({
+            ...variant,
+            exists: await fileExists(variant.src)
+        })));
+        const found = results.find(result => result.exists);
+        return found ? { src: found.src, favoriteRank: found.favoriteRank } : null;
+    }
+
+    // Поиск 010.webp, 020-fav1.webp и далее небольшими параллельными пачками.
     async function discoverPhotoPaths(folderPath, sessionId) {
         const paths = [];
         let nextNumber = 10;
         let errorsCount = 0;
+        let firstBatch = true;
 
         while (errorsCount < MAX_ERRORS && sessionId === loadSession) {
-            const candidates = Array.from({ length: DISCOVERY_BATCH_SIZE }, (_, index) => {
+            const batchSize = firstBatch
+                ? INITIAL_DISCOVERY_BATCH_SIZE
+                : DISCOVERY_BATCH_SIZE;
+            const candidates = Array.from({ length: batchSize }, (_, index) => {
                 const number = nextNumber + index * 10;
                 const fileName = String(number).padStart(3, '0');
                 return `${folderPath}${fileName}.webp`;
             });
 
-            const results = await Promise.all(candidates.map(async src => ({
+            const normalResults = await Promise.all(candidates.map(async src => ({
                 src,
                 exists: await fileExists(src)
             })));
+            const results = await Promise.all(normalResults.map(async result => {
+                if (result.exists) {
+                    return { src: result.src, favoriteRank: null };
+                }
+                return findFavoriteVariant(result.src);
+            }));
 
             for (const result of results) {
                 if (sessionId !== loadSession) return [];
 
-                if (result.exists) {
-                    paths.push(result.src);
+                if (result) {
+                    paths.push(result);
                     errorsCount = 0;
                 } else {
                     errorsCount++;
@@ -226,33 +265,56 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (errorsCount >= MAX_ERRORS) break;
             }
 
-            nextNumber += DISCOVERY_BATCH_SIZE * 10;
+            nextNumber += batchSize * 10;
+            firstBatch = false;
         }
 
         return paths;
     }
 
-    // Первый кадр выбирается из начала папки и загружается одновременно с поиском остальных
-    async function loadFirstPhoto(folderPath, sessionId) {
-        const candidates = shuffle(FIRST_PHOTO_CANDIDATES).map(number => {
-            const fileName = String(number).padStart(3, '0');
-            return `${folderPath}${fileName}.webp`;
+    function arrangePhotoPaths(discoveredItems) {
+        const pinned = new Map();
+        const regular = [];
+
+        discoveredItems.forEach(item => {
+            if (FAVORITE_RANKS.includes(item.favoriteRank) && !pinned.has(item.favoriteRank)) {
+                pinned.set(item.favoriteRank, item.src);
+            } else {
+                regular.push(item.src);
+            }
         });
 
-        for (const src of candidates) {
-            if (sessionId !== loadSession) return null;
+        const shuffledRegular = shuffle(regular);
+        const topThree = FAVORITE_RANKS.map(rank => (
+            pinned.get(rank) || shuffledRegular.shift()
+        )).filter(Boolean);
 
-            try {
-                const image = await loadImage(src);
-                if (sessionId !== loadSession) return null;
-                return { src, image };
-            } catch (error) {
-                // Пробуем следующий файл из стартовой тройки
-            }
-        }
-
-        return null;
+        return [...topThree, ...shuffledRegular];
     }
+
+    function setGalleryEmptyContactOpen(open) {
+        if (!galleryEmptyContactToggle || !galleryEmptyContactOptions) return;
+        galleryEmptyContactToggle.setAttribute('aria-expanded', String(open));
+        galleryEmptyContactOptions.setAttribute('aria-hidden', String(!open));
+        galleryEmptyContactOptions.classList.toggle('active', open);
+    }
+
+    function hideGalleryEmpty() {
+        if (galleryEmpty) galleryEmpty.hidden = true;
+        setGalleryEmptyContactOpen(false);
+    }
+
+    function showGalleryEmpty() {
+        if (!galleryEmpty) return false;
+        galleryEmpty.hidden = false;
+        if (loader) loader.classList.add('hidden');
+        return true;
+    }
+
+    galleryEmptyContactToggle?.addEventListener('click', () => {
+        const isOpen = galleryEmptyContactToggle.getAttribute('aria-expanded') === 'true';
+        setGalleryEmptyContactOpen(!isOpen);
+    });
 
     async function loadGallery(folderPath) {
         const sessionId = ++loadSession;
@@ -264,59 +326,38 @@ document.addEventListener('DOMContentLoaded', () => {
         updateLightboxControls();
         gallery.innerHTML = '';
         gallery.style.height = '';
+        hideGalleryEmpty();
         if (loader) loader.classList.remove('hidden');
 
-        const discoveryPromise = discoverPhotoPaths(folderPath, sessionId);
-        let firstPhoto = await loadFirstPhoto(folderPath, sessionId);
-
+        const discoveredItems = await discoverPhotoPaths(folderPath, sessionId);
         if (sessionId !== loadSession) return;
 
-        if (firstPhoto) {
-            lightboxOrder = [firstPhoto.src];
-            createPhotoBlock(firstPhoto.src, firstPhoto.image, folderPath);
+        if (discoveredItems.length === 0) {
+            showGalleryEmpty();
+            return;
         }
 
-        let photoPaths = await discoveryPromise;
-        if (sessionId !== loadSession) return;
-
-        if (!firstPhoto && photoPaths.length > 0) {
-            photoPaths = shuffle(photoPaths);
-            const firstPath = photoPaths.shift();
-
-            try {
-                const image = await loadImage(firstPath);
-                if (sessionId !== loadSession) return;
-                firstPhoto = { src: firstPath, image };
-                lightboxOrder = [firstPath];
-                createPhotoBlock(firstPath, image, folderPath);
-            } catch (error) {
-                // Остальные файлы всё равно продолжают загружаться
-            }
-        }
-
-        const remainingPaths = shuffle(photoPaths.filter(src => src !== firstPhoto?.src));
-        lightboxOrder = firstPhoto
-            ? [firstPhoto.src, ...remainingPaths]
-            : [...remainingPaths];
+        const orderedPaths = arrangePhotoPaths(discoveredItems);
+        lightboxOrder = [...orderedPaths];
         updateLightboxControls();
 
-        // Недостающие фотографии верхнего ряда загружаем одновременно.
-        // Каждая появляется сразу после своей загрузки, не ожидая соседние кадры.
-        const visiblePhotoCount = gallery.querySelectorAll('.photo').length;
-        const firstRowSlots = Math.max(0, getColumnCount() - visiblePhotoCount);
-        const firstRowPaths = remainingPaths.splice(0, firstRowSlots);
-
-        await Promise.all(firstRowPaths.map(async src => {
+        // Верхний ряд загружается параллельно, но вставляется строго слева направо.
+        const firstRowPaths = orderedPaths.slice(0, getColumnCount());
+        const remainingPaths = orderedPaths.slice(firstRowPaths.length);
+        const firstRowImages = await Promise.all(firstRowPaths.map(async src => {
             try {
                 const image = await loadImage(src);
-                if (sessionId !== loadSession) return;
-                createPhotoBlock(src, image, folderPath);
+                return { src, image };
             } catch (error) {
-                // Если один кадр не загрузился, его место займёт следующий исправный файл.
+                return null;
             }
         }));
 
         if (sessionId !== loadSession) return;
+
+        firstRowImages.filter(Boolean).forEach(({ src, image }) => {
+            createPhotoBlock(src, image, folderPath);
+        });
 
         for (const src of remainingPaths) {
             if (sessionId !== loadSession) return;
@@ -330,8 +371,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Если папка пока пустая, оставляем индикатор на экране.
-        // Он скроется автоматически после появления первой фотографии.
+        if (!gallery.querySelector('.photo')) {
+            showGalleryEmpty();
+        }
     }
 
     // === ПЕРЕКЛЮЧЕНИЕ ЖАНРА ===
@@ -706,11 +748,57 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-        // Кнопка Наверх
+    // Плавающая кнопка «Наверх»
     const backToTopBtn = document.getElementById('backToTop');
     if (backToTopBtn) {
+        const infoSection = document.querySelector('.info-section');
+        let backToTopFrame = 0;
+
+        const updateBackToTop = () => {
+            const showAfter = Math.min(640, window.innerHeight * 0.7);
+            const shouldShow = window.scrollY > showAfter;
+            let isAtInfoBoundary = false;
+
+            // На ПК кнопка остаётся над инфоблоком, а на мобильном входит
+            // в его верхний правый угол с небольшим внутренним отступом.
+            backToTopBtn.style.setProperty('--back-to-top-lift', '0px');
+            if (infoSection) {
+                const infoSectionTop = infoSection.getBoundingClientRect().top;
+                const buttonBottom = backToTopBtn.getBoundingClientRect().bottom;
+                const isMobile = window.innerWidth <= 600;
+                const mobileInfoInset = 8;
+                const boundaryGap = isMobile
+                    ? -(backToTopBtn.offsetHeight + mobileInfoInset)
+                    : 16;
+                const boundaryLift = Math.max(0, buttonBottom - infoSectionTop + boundaryGap);
+                isAtInfoBoundary = boundaryLift > 0;
+                backToTopBtn.style.setProperty('--back-to-top-lift', `${Math.ceil(boundaryLift)}px`);
+            }
+
+            backToTopBtn.classList.toggle('is-visible', shouldShow);
+            backToTopBtn.classList.toggle('is-at-info-boundary', isAtInfoBoundary);
+            backToTopBtn.setAttribute('aria-hidden', String(!shouldShow));
+            backToTopBtn.tabIndex = shouldShow ? 0 : -1;
+            backToTopFrame = 0;
+        };
+
+        const queueBackToTopUpdate = () => {
+            if (backToTopFrame) return;
+            backToTopFrame = window.requestAnimationFrame(updateBackToTop);
+        };
+
         backToTopBtn.addEventListener('click', () => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            backToTopBtn.blur();
+            window.scrollTo({
+                top: 0,
+                behavior: reducedMotion ? 'auto' : 'smooth'
+            });
         });
+
+        window.addEventListener('scroll', queueBackToTopUpdate, { passive: true });
+        window.addEventListener('resize', queueBackToTopUpdate);
+        window.addEventListener('load', queueBackToTopUpdate);
+        updateBackToTop();
     }
 });
