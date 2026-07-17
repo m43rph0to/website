@@ -18,14 +18,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const genreConfig = {
         'img/gallery/reportage/': {
             altPool: [
-                "Репортажная съемка мероприятия в Москве",
-                "Съемка живых событий",
-                "Живые эмоции и спонтанные моменты",
-                "Атмосфера мероприятия в деталях",
-                "Спонтанные моменты в кадре",
-                "Репортажный кадр с мероприятия",
-                "Ключевые моменты события в кадре",
-                "Динамика и энергия мероприятия"
+                "Репортажная фотография с мероприятия",
+                "Кадр из репортажной съёмки события",
+                "Один из моментов мероприятия",
+                "Живой эпизод во время события",
+                "Атмосфера мероприятия в кадре",
+                "Участники события во время мероприятия",
+                "Гости мероприятия в естественной обстановке",
+                "Эмоции людей во время события",
+                "Общение участников мероприятия",
+                "Люди в пространстве события",
+                "Непостановочный кадр с мероприятия",
+                "Сцена из жизни мероприятия",
+                "Фрагмент репортажа о событии",
+                "Момент публичного мероприятия",
+                "Репортажный кадр с участниками события",
+                "Детали обстановки на мероприятии",
+                "Момент во время выступления",
+                "Зрители и участники мероприятия",
+                "Событие глазами репортажного фотографа",
+                "Фотография из репортажного портфолио"
             ]
         },
         'img/gallery/portrait/': {
@@ -756,32 +768,68 @@ document.addEventListener('DOMContentLoaded', () => {
     if (backToTopBtn) {
         const infoSection = document.querySelector('.info-section');
         let backToTopFrame = 0;
+        let boundaryScrollY = Infinity;
+        let returnRevealScrollY = Infinity;
+        let boundaryLocked = false;
+        let returningFromBoundary = false;
+        let lastScrollY = window.scrollY;
 
-        const updateBackToTop = () => {
-            const showAfter = Math.min(640, window.innerHeight * 0.7);
-            const shouldShow = window.scrollY > showAfter;
-            let isAtInfoBoundary = false;
+        const getShowAfter = () => Math.min(640, window.innerHeight * 0.7);
 
-            // На ПК кнопка остаётся над инфоблоком, а на мобильном входит
-            // в его верхний правый угол с небольшим внутренним отступом.
+        // Граница вычисляется в координатах документа и не зависит от уже
+        // сдвинутой кнопки. Благодаря этому конечная точка не колеблется.
+        const measureBackToTopBoundary = () => {
             backToTopBtn.style.setProperty('--back-to-top-lift', '0px');
-            if (infoSection) {
-                const infoSectionTop = infoSection.getBoundingClientRect().top;
-                const buttonBottom = backToTopBtn.getBoundingClientRect().bottom;
-                const isMobile = window.innerWidth <= 600;
-                const mobileInfoInset = 8;
-                const boundaryGap = isMobile
-                    ? -(backToTopBtn.offsetHeight + mobileInfoInset)
-                    : 16;
-                const boundaryLift = Math.max(0, buttonBottom - infoSectionTop + boundaryGap);
-                isAtInfoBoundary = boundaryLift > 0;
-                backToTopBtn.style.setProperty('--back-to-top-lift', `${Math.ceil(boundaryLift)}px`);
+
+            if (!infoSection) {
+                boundaryScrollY = Infinity;
+                returnRevealScrollY = Infinity;
+                return;
             }
 
+            const buttonStyles = getComputedStyle(backToTopBtn);
+            const baseBottom = parseFloat(buttonStyles.bottom) || 0;
+            const buttonHeight = backToTopBtn.offsetHeight;
+            const normalButtonTop = window.innerHeight - baseBottom - buttonHeight;
+            const infoDocumentTop = window.scrollY + infoSection.getBoundingClientRect().top;
+            // В конечной точке кнопка фиксируется внутри верхнего правого угла
+            // инфоблока на всех разрешениях.
+            const targetDocumentTop = infoDocumentTop + 8;
+
+            boundaryScrollY = Math.max(0, targetDocumentTop - normalButtonTop);
+            // При движении вверх кнопка возвращается после прохождения примерно
+            // четверти обратного пути: уже не у самого низа, но заметно раньше.
+            returnRevealScrollY = Math.max(getShowAfter(), boundaryScrollY * 0.72);
+        };
+
+        const updateBackToTop = () => {
+            const scrollY = window.scrollY;
+            const scrollingUp = scrollY < lastScrollY - 1;
+
+            if (!boundaryLocked && scrollY >= boundaryScrollY) {
+                boundaryLocked = true;
+            }
+            if (boundaryLocked && scrollingUp) {
+                returningFromBoundary = true;
+            }
+            if (returningFromBoundary && scrollY <= returnRevealScrollY) {
+                boundaryLocked = false;
+                returningFromBoundary = false;
+            }
+
+            const isAtInfoBoundary = boundaryLocked && !returningFromBoundary;
+            const boundaryLift = isAtInfoBoundary
+                ? Math.max(0, scrollY - boundaryScrollY)
+                : 0;
+            const waitingForReturnReveal = boundaryLocked && returningFromBoundary;
+            const shouldShow = scrollY > getShowAfter() && !waitingForReturnReveal;
+
+            backToTopBtn.style.setProperty('--back-to-top-lift', `${Math.round(boundaryLift)}px`);
             backToTopBtn.classList.toggle('is-visible', shouldShow);
             backToTopBtn.classList.toggle('is-at-info-boundary', isAtInfoBoundary);
             backToTopBtn.setAttribute('aria-hidden', String(!shouldShow));
             backToTopBtn.tabIndex = shouldShow ? 0 : -1;
+            lastScrollY = scrollY;
             backToTopFrame = 0;
         };
 
@@ -800,8 +848,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         window.addEventListener('scroll', queueBackToTopUpdate, { passive: true });
-        window.addEventListener('resize', queueBackToTopUpdate);
-        window.addEventListener('load', queueBackToTopUpdate);
+        window.addEventListener('resize', () => {
+            boundaryLocked = false;
+            returningFromBoundary = false;
+            measureBackToTopBoundary();
+            queueBackToTopUpdate();
+        });
+        window.addEventListener('load', () => {
+            measureBackToTopBoundary();
+            queueBackToTopUpdate();
+        });
+        if ('ResizeObserver' in window && gallery) {
+            const backToTopBoundaryObserver = new ResizeObserver(() => {
+                measureBackToTopBoundary();
+                queueBackToTopUpdate();
+            });
+            backToTopBoundaryObserver.observe(gallery);
+        }
+        measureBackToTopBoundary();
         updateBackToTop();
     }
 });

@@ -241,10 +241,18 @@ body {
     transform: scale(1.01);
 }
 
-/* На ПК левая граница кнопки совпадает с началом заголовка «Скидки». */
+/* На ПК правый край кнопки совпадает с правым краем содержимого футера. */
 @media (min-width: 601px) {
     .price-link {
-        margin-left: 48px;
+        grid-column: 1 / -1;
+        justify-self: center;
+        margin-left: 0;
+        margin-top: -14px;
+        transform: translateX(calc(50vw - 50% - 50px));
+    }
+
+    .price-link:hover {
+        transform: translateX(calc(50vw - 50% - 50px)) scale(1.01);
     }
 
     /* В окне стоимости на ПК названия услуг и цены увеличены ровно на 2 px. */
@@ -637,22 +645,34 @@ header {
     overflow: hidden; 
     background: #1a1a1a;
     cursor: zoom-in; 
-    opacity: 0; 
-    transition: opacity 1.2s ease-out;
-}
-.photo.visible { 
-    opacity: 1; 
+    opacity: 1;
 }
 .photo img { 
     width: 100%; 
     height: auto; 
     display: block; 
-    transition: transform 0.4s ease, filter 0.4s ease; 
+    opacity: 0;
+    backface-visibility: hidden;
+    transform: translateZ(0) scale(1);
+    transition: opacity 0.8s ease-out, transform 0.4s ease;
+}
+.photo.visible img {
+    opacity: 1;
+}
+.photo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0);
+    pointer-events: none;
+    transition: background-color 0.4s ease;
 }
 @media (hover: hover) and (pointer: fine) {
     .photo:hover img {
-        transform: scale(1.018);
-        filter: brightness(1.045);
+        transform: translateZ(0) scale(1.018);
+    }
+    .photo:hover::after {
+        background-color: rgba(255, 255, 255, 0.025);
     }
 }
 
@@ -863,10 +883,10 @@ footer {
     position: relative;
     isolation: isolate;
     overflow: hidden;
-    padding: 34px 0 30px;
+    padding: 46px 0 18px;
     background:
-        radial-gradient(circle at 25% 0%, rgba(255, 255, 255, 0.035), transparent 34%),
-        radial-gradient(circle at 78% 100%, rgba(255, 140, 20, 0.05), transparent 30%),
+        linear-gradient(122deg, rgba(255, 255, 255, 0.028) 0%, transparent 37%),
+        linear-gradient(302deg, rgba(255, 140, 20, 0.052) 0%, transparent 34%),
         #161616;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -879,9 +899,9 @@ footer {
     pointer-events: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128' viewBox='0 0 128 128'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='.5'/%3E%3C/svg%3E");
     background-repeat: repeat;
-    background-size: 128px 128px;
-    mix-blend-mode: soft-light;
-    opacity: 0.035;
+    background-size: 96px 96px;
+    mix-blend-mode: overlay;
+    opacity: 0.085;
 }
 .info-container {
     position: relative;
@@ -900,32 +920,30 @@ footer {
     text-align: left;
 }
 .info-item {
-    position: relative;
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr);
+    column-gap: 12px;
+    align-content: start;
     min-width: 0;
-    min-height: 118px;
-    padding: 18px 20px 18px 48px;
+    min-height: 90px;
+    padding: 18px 20px;
 }
 .info-item::before {
     content: '❯';
-    position: absolute;
-    top: 22px;
-    left: 14px;
-    color: rgba(255, 173, 21, 0.30);
+    display: block;
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+    margin-top: 0.28em;
+    color: rgba(255, 173, 21, 0.78);
     font-family: Georgia, 'Times New Roman', serif;
-    font-size: .82rem;
+    font-size: calc(0.82rem + 2px);
     font-weight: 400;
     line-height: 1;
 }
-.info-item h3 {
-    font-family: var(--font-heading);
-    font-size: 1.55rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-    margin-bottom: 8px;
-    display: inline-block; 
-    border-bottom: 1px solid #555;
-}
 .info-item p {
+    grid-column: 2;
+    grid-row: 1;
     font-size: 1.2rem;
     font-weight: 400;
     line-height: 1.32;
@@ -1012,6 +1030,7 @@ footer {
     line-height: 1;
     letter-spacing: var(--gallery-empty-letter-spacing);
     color: rgba(224, 224, 224, 0.76);
+    -webkit-text-fill-color: currentColor;
     background: none;
     -webkit-background-clip: border-box;
     background-clip: border-box;
@@ -1260,10 +1279,10 @@ footer {
         bottom: auto;
         right: auto;
         grid-column: 1;
-        justify-self: end;
-        align-self: flex-end;
+        justify-self: center;
+        align-self: center;
         width: fit-content;
-        margin-top: 4px;
+        margin-top: 2rem;
         padding: 2px 12px;
         font-size: 1.4rem;
     }
@@ -1288,12 +1307,31 @@ footer {
         gap: 12px; 
         padding-left: 20px; 
         padding-right: 20px; 
-        align-items: flex-end; 
+        align-items: center; 
+        text-align: center;
     }
 
     .footer-left {
         width: 100%;
-        justify-content: flex-end;
+        justify-content: center;
+    }
+
+    .footer-right {
+        width: 100%;
+        align-items: center;
+    }
+
+    .footer-email-wrap {
+        justify-content: center;
+    }
+
+    .footer-email-icon {
+        transform: translateY(2px);
+    }
+
+    .footer-copyright {
+        width: 100%;
+        text-align: center;
     }
 
     .header-title h1 { 
@@ -1409,7 +1447,8 @@ footer {
         --price-contact-icon-size: 21px;
     }
     .info-section {
-        padding: 26px 0 24px;
+        /* Место для кнопки «наверх», остановившейся в углу инфоблока. */
+        padding: 52px 0 24px;
     }
     .info-grid {
         grid-template-columns: 1fr;
@@ -1417,13 +1456,12 @@ footer {
     }
     .info-item {
         min-height: 0;
-        padding: 14px 8px 14px 38px;
+        padding: 14px 8px;
         border-right: 0;
         border-bottom: 0;
     }
-    .info-item::before {
-        top: 18px;
-        left: 8px;
+    .info-item:last-of-type {
+        padding-bottom: 0;
     }
     .back-to-top {
         /* 16 px — правый край фото; 5 px — половина разницы
