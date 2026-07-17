@@ -39,6 +39,8 @@ html {
     width: 100%;
     max-width: 100%;
     overflow-x: hidden;
+    /* Ширина страницы не меняется при появлении вертикальной прокрутки. */
+    scrollbar-gutter: stable;
 }
 body {
     width: 100%;
@@ -1000,8 +1002,14 @@ footer {
     line-height: 0.92;
     letter-spacing: var(--gallery-empty-letter-spacing);
 }
-.gallery-empty-title span {
+.gallery-empty-title > span {
     display: block;
+}
+.gallery-empty-hanging-punctuation {
+    display: inline-block;
+    width: 0;
+    overflow: visible;
+    text-align: left;
 }
 .gallery-empty-photo-icon {
     display: block;
@@ -1017,7 +1025,7 @@ footer {
     min-width: 220px;
     max-width: 100%;
     min-height: 28px;
-    margin-top: 12px;
+    margin-top: 14px;
     padding-top: 0;
     border-top: 0;
 }
@@ -1424,12 +1432,12 @@ footer {
         width: max-content;
         min-width: 215px;
         max-width: 100%;
-        margin-top: 14px;
+        margin-top: 12px;
     }
     .gallery-empty-photo-icon {
         width: 36px;
         height: 36px;
-        margin: 0 0 18px;
+        margin: 0 0 28px;
     }
     .gallery-empty-toggle {
         height: auto;

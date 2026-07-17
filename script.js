@@ -153,14 +153,14 @@ document.addEventListener('DOMContentLoaded', () => {
         gallery.style.height = `${Math.max(0, contentHeight)}px`;
     }
 
-    function createPhotoBlock(src, image, folderPath) {
+    function createPhotoBlock(photoItem, image, folderPath) {
         const div = document.createElement('div');
         div.className = 'photo';
         image.alt = getAltText(folderPath);
         image.decoding = 'async';
-        image.dataset.src = src;
-        loadedLightboxSources.add(src);
-        lightboxAltBySource.set(src, image.alt);
+        image.dataset.src = photoItem.lightboxSrc;
+        loadedLightboxSources.add(photoItem.lightboxSrc);
+        lightboxAltBySource.set(photoItem.lightboxSrc, image.alt);
         div.appendChild(image);
         gallery.appendChild(div);
 
@@ -223,23 +223,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Суффиксы -fav1, -fav2 и -fav3 проверяются только вместо отсутствующего
-    // обычного файла. Так закрепление не добавляет запросов для всей галереи.
-    async function findFavoriteVariant(normalSrc) {
-        const stem = normalSrc.replace(/\.webp$/i, '');
+    // Суффиксы -orig-fav1, -orig-fav2 и -orig-fav3 проверяются только вместо
+    // отсутствующего файла -orig. Закреплённый файл служит большой версией.
+    async function findFavoriteVariant(basePath, previewSrc) {
         const variants = FAVORITE_RANKS.map(rank => ({
-            src: `${stem}-fav${rank}.webp`,
+            lightboxSrc: `${basePath}-orig-fav${rank}.webp`,
             favoriteRank: rank
         }));
         const results = await Promise.all(variants.map(async variant => ({
             ...variant,
-            exists: await fileExists(variant.src)
+            exists: await fileExists(variant.lightboxSrc)
         })));
         const found = results.find(result => result.exists);
-        return found ? { src: found.src, favoriteRank: found.favoriteRank } : null;
+        return found ? {
+            previewSrc,
+            lightboxSrc: found.lightboxSrc,
+            favoriteRank: found.favoriteRank
+        } : null;
     }
 
-    // Поиск 010.webp, 020-fav1.webp и далее небольшими параллельными пачками.
+    // Поиск пар 010-small.webp / 010-orig.webp и вариантов 020-orig-fav1.webp.
+    // Превью является обязательным: без него кадр в галерею не добавляется.
     async function discoverPhotoPaths(folderPath, sessionId) {
         const paths = [];
         let nextNumber = 10;
@@ -253,18 +257,27 @@ document.addEventListener('DOMContentLoaded', () => {
             const candidates = Array.from({ length: batchSize }, (_, index) => {
                 const number = nextNumber + index * 10;
                 const fileName = String(number).padStart(3, '0');
-                return `${folderPath}${fileName}.webp`;
+                return `${folderPath}${fileName}`;
             });
 
-            const normalResults = await Promise.all(candidates.map(async src => ({
-                src,
-                exists: await fileExists(src)
+            const previewResults = await Promise.all(candidates.map(async basePath => ({
+                basePath,
+                previewSrc: `${basePath}-small.webp`,
+                exists: await fileExists(`${basePath}-small.webp`)
             })));
-            const results = await Promise.all(normalResults.map(async result => {
-                if (result.exists) {
-                    return { src: result.src, favoriteRank: null };
+            const results = await Promise.all(previewResults.map(async result => {
+                if (!result.exists) return null;
+
+                const originalSrc = `${result.basePath}-orig.webp`;
+                if (await fileExists(originalSrc)) {
+                    return {
+                        previewSrc: result.previewSrc,
+                        lightboxSrc: originalSrc,
+                        favoriteRank: null
+                    };
                 }
-                return findFavoriteVariant(result.src);
+
+                return findFavoriteVariant(result.basePath, result.previewSrc);
             }));
 
             for (const result of results) {
@@ -293,9 +306,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         discoveredItems.forEach(item => {
             if (FAVORITE_RANKS.includes(item.favoriteRank) && !pinned.has(item.favoriteRank)) {
-                pinned.set(item.favoriteRank, item.src);
+                pinned.set(item.favoriteRank, item);
             } else {
-                regular.push(item.src);
+                regular.push(item);
             }
         });
 
@@ -352,17 +365,17 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const orderedPaths = arrangePhotoPaths(discoveredItems);
-        lightboxOrder = [...orderedPaths];
+        const orderedItems = arrangePhotoPaths(discoveredItems);
+        lightboxOrder = orderedItems.map(item => item.lightboxSrc);
         updateLightboxControls();
 
         // Верхний ряд загружается параллельно, но вставляется строго слева направо.
-        const firstRowPaths = orderedPaths.slice(0, getColumnCount());
-        const remainingPaths = orderedPaths.slice(firstRowPaths.length);
-        const firstRowImages = await Promise.all(firstRowPaths.map(async src => {
+        const firstRowItems = orderedItems.slice(0, getColumnCount());
+        const remainingItems = orderedItems.slice(firstRowItems.length);
+        const firstRowImages = await Promise.all(firstRowItems.map(async item => {
             try {
-                const image = await loadImage(src);
-                return { src, image };
+                const image = await loadImage(item.previewSrc);
+                return { item, image };
             } catch (error) {
                 return null;
             }
@@ -370,17 +383,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (sessionId !== loadSession) return;
 
-        firstRowImages.filter(Boolean).forEach(({ src, image }) => {
-            createPhotoBlock(src, image, folderPath);
+        firstRowImages.filter(Boolean).forEach(({ item, image }) => {
+            createPhotoBlock(item, image, folderPath);
         });
 
-        for (const src of remainingPaths) {
+        for (const item of remainingItems) {
             if (sessionId !== loadSession) return;
 
             try {
-                const image = await loadImage(src);
+                const image = await loadImage(item.previewSrc);
                 if (sessionId !== loadSession) return;
-                createPhotoBlock(src, image, folderPath);
+                createPhotoBlock(item, image, folderPath);
             } catch (error) {
                 // Один повреждённый файл не должен останавливать всю галерею
             }
